@@ -64,20 +64,11 @@ export default {
 		}
 
 		if (url.pathname === '/profile' && request.method === 'PUT') {
-			// 这是一个模拟的响应，您需要实现完整的数据库更新逻辑
-			return addCorsHeaders(new Response(JSON.stringify({ message: '个人资料更新成功 (模拟)' }), {
-				status: 200,
-				headers: { 'Content-Type': 'application/json' },
-			}));
+			return addCorsHeaders(await handleUpdateProfile(request, env));
 		}
 
 		if (url.pathname === '/avatar' && request.method === 'POST') {
-			// 这是一个模拟的响应，您需要实现完整的头像上传逻辑
-			// 例如，您可以将图片上传到 Cloudflare R2
-			return addCorsHeaders(new Response(JSON.stringify({ message: '头像上传成功 (模拟)', avatar_url: 'https://via.placeholder.com/150' }), {
-				status: 200,
-				headers: { 'Content-Type': 'application/json' },
-			}));
+			return addCorsHeaders(await handleAvatarUpload(request, env));
 		}
 
 		if (url.pathname === '/') {
@@ -266,4 +257,114 @@ async function handleGetMarkers(request, env) {
 			headers: { 'Content-Type': 'application/json' }
 		});
 	}
+}
+
+/**
+ * 处理更新个人资料的请求
+ * @param {Request} request
+ * @param {*} env
+ * @returns {Response}
+ */
+async function handleUpdateProfile(request, env) {
+	let profileData;
+	try {
+		profileData = await request.json();
+	} catch (e) {
+		return new Response(JSON.stringify({ error: '无效的JSON格式' }), {
+			status: 400,
+			headers: { 'Content-Type': 'application/json' },
+		});
+	}
+
+	const { username, name, contact, bio, gender, age } = profileData;
+
+	if (!username) {
+		return new Response(JSON.stringify({ error: '缺少识别用户所需的`username`字段' }), {
+			status: 400,
+			headers: { 'Content-Type': 'application/json' },
+		});
+	}
+
+	const fields = [];
+	const values = [];
+
+	if (name !== undefined) { fields.push('name = ?'); values.push(name); }
+	if (contact !== undefined) { fields.push('contact = ?'); values.push(contact); }
+	if (bio !== undefined) { fields.push('bio = ?'); values.push(bio); }
+	if (gender !== undefined) { fields.push('gender = ?'); values.push(gender); }
+	if (age !== undefined) { fields.push('age = ?'); values.push(age); }
+
+	if (fields.length === 0) {
+		return new Response(JSON.stringify({ error: '没有提供任何可更新的资料' }), {
+			status: 400,
+			headers: { 'Content-Type': 'application/json' },
+		});
+	}
+    
+    fields.push('updated_at = CURRENT_TIMESTAMP');
+	values.push(username);
+
+	const sql = `UPDATE users SET ${fields.join(', ')} WHERE username = ?`;
+
+	try {
+		const ps = env.DB.prepare(sql).bind(...values);
+		const { success, meta } = await ps.run();
+
+		if (!success || meta.changes === 0) {
+			return new Response(JSON.stringify({ error: '找不到要更新的用户或数据未发生变化' }), {
+				status: 404,
+				headers: { 'Content-Type': 'application/json' },
+			});
+		}
+
+		return new Response(JSON.stringify({ message: '个人资料更新成功' }), {
+			status: 200,
+			headers: { 'Content-Type': 'application/json' },
+		});
+	} catch (e) {
+		console.error('更新个人资料时发生错误:', e);
+		return new Response(JSON.stringify({ error: '发生内部服务器错误' }), {
+			status: 500,
+			headers: { 'Content-Type': 'application/json' },
+		});
+	}
+}
+
+/**
+ * 处理上传头像的请求
+ * @param {Request} request
+ * @param {*} env
+ * @returns {Response}
+ */
+async function handleAvatarUpload(request, env) {
+    const username = request.headers.get('x-user-username');
+    if (!username) {
+        return new Response(JSON.stringify({ error: '缺少 X-User-Username 请求头' }), { status: 400 });
+    }
+
+    try {
+        const formData = await request.formData();
+        const file = formData.get('avatar');
+        
+        if (!file || typeof file === 'string') {
+            return new Response(JSON.stringify({ error: '未找到头像文件' }), { status: 400 });
+        }
+        
+        // 真实应用中，您会在这里将文件上传到R2等存储服务。
+        // 为简化，我们仅在数据库中记录一个路径。
+        const avatarPath = `/uploads/avatars/${username}_${Date.now()}.jpg`;
+
+        const ps = env.DB.prepare('UPDATE users SET avatar_url = ? WHERE username = ?')
+                         .bind(avatarPath, username);
+        await ps.run();
+
+        return new Response(JSON.stringify({
+            message: '头像上传成功',
+            avatar_url: avatarPath 
+        }), { status: 200 });
+
+    } catch(e) {
+        console.error('上传头像时出错:', e);
+        return new Response(JSON.stringify({ error: '发生内部服务器错误' }), { status: 500 });
+    }
 } 
