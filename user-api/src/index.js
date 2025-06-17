@@ -63,6 +63,22 @@ export default {
 			return addCorsHeaders(await handleGetMarkers(request, env));
 		}
 
+		if (url.pathname === '/markers' && request.method === 'POST') {
+			return addCorsHeaders(await handleCreateMarker(request, env));
+		}
+
+		// 新增：根据用户名获取其发布的markers
+		if (url.pathname.startsWith('/markers/') && request.method === 'GET') {
+			const username = url.pathname.split('/')[2];
+			return addCorsHeaders(await handleGetUserMarkers(request, env, username));
+		}
+
+		// 新增：根据用户名获取用户公开信息
+		if (url.pathname.startsWith('/users/') && request.method === 'GET') {
+			const username = url.pathname.split('/')[2];
+			return addCorsHeaders(await handleGetUserProfile(request, env, username));
+		}
+
 		if (url.pathname === '/profile' && request.method === 'PUT') {
 			return addCorsHeaders(await handleUpdateProfile(request, env));
 		}
@@ -257,6 +273,110 @@ async function handleGetMarkers(request, env) {
 			headers: { 'Content-Type': 'application/json' }
 		});
 	}
+}
+
+/**
+ * 处理创建marker的请求
+ * @param {Request} request
+ * @param {*} env
+ * @returns {Response}
+ */
+async function handleCreateMarker(request, env) {
+    let markerData;
+    try {
+        markerData = await request.json();
+    } catch (e) {
+        return new Response(JSON.stringify({ error: '无效的JSON格式' }), { status: 400 });
+    }
+    
+    const {
+        user_id, title, description, lat, lng, type, 
+        marker_type, start_time, end_time, contact, cost, is_private
+    } = markerData;
+    
+    if (!user_id || !title || lat === undefined || lng === undefined) {
+        return new Response(JSON.stringify({ error: '缺少必需字段: user_id, title, lat, lng' }), { status: 400 });
+    }
+
+    try {
+        const ps = env.DB.prepare(
+            `INSERT INTO markers (user_id, title, description, lat, lng, type, marker_type, start_time, end_time, contact, cost, is_private)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+        ).bind(
+            user_id, title, description || null, lat, lng, type || null, 
+            marker_type || 'personal', start_time || null, end_time || null, 
+            contact || null, cost || null, is_private ? 1 : 0
+        );
+        
+        await ps.run();
+
+        return new Response(JSON.stringify({ message: '标注创建成功' }), { status: 201 });
+    } catch (e) {
+        console.error('创建标注时发生错误:', e);
+        return new Response(JSON.stringify({ error: '发生内部服务器错误' }), { status: 500 });
+    }
+}
+
+/**
+ * 处理获取单个用户所有markers的请求
+ * @param {Request} request
+ * @param {*} env
+ * @param {string} username
+ * @returns {Response}
+ */
+async function handleGetUserMarkers(request, env, username) {
+    if (!username) {
+        return new Response(JSON.stringify({ error: '必须提供用户名' }), { status: 400 });
+    }
+    try {
+        const ps = env.DB.prepare(
+            `SELECT m.*, u.username as user_username, u.name as user_name 
+             FROM markers m 
+             JOIN users u ON m.user_id = u.id 
+             WHERE u.username = ?`
+        ).bind(username);
+        const { results } = await ps.all();
+        return new Response(JSON.stringify(results), {
+            status: 200,
+            headers: { 'Content-Type': 'application/json' },
+        });
+    } catch (e) {
+        console.error(`获取用户 ${username} 的markers时发生错误:`, e);
+        return new Response(JSON.stringify({ error: '发生内部服务器错误' }), { status: 500 });
+    }
+}
+
+/**
+ * 处理获取用户公开信息的请求
+ * @param {Request} request
+ * @param {*} env
+ * @param {string} username
+ * @returns {Response}
+ */
+async function handleGetUserProfile(request, env, username) {
+    if (!username) {
+        return new Response(JSON.stringify({ error: '必须提供用户名' }), { status: 400 });
+    }
+    try {
+        const ps = env.DB.prepare(
+            `SELECT id, username, name, avatar_url, bio, gender, age, created_at 
+             FROM users 
+             WHERE username = ?`
+        ).bind(username);
+        const user = await ps.first();
+
+        if (!user) {
+            return new Response(JSON.stringify({ error: '用户不存在' }), { status: 404 });
+        }
+
+        return new Response(JSON.stringify(user), {
+            status: 200,
+            headers: { 'Content-Type': 'application/json' },
+        });
+    } catch (e) {
+        console.error(`获取用户 ${username} 的资料时发生错误:`, e);
+        return new Response(JSON.stringify({ error: '发生内部服务器错误' }), { status: 500 });
+    }
 }
 
 /**
