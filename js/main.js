@@ -183,22 +183,25 @@ window.addEventListener('DOMContentLoaded', () => {
     const userStatusEl = document.getElementById('user-status');
 
     if (currentUser) {
+        // 增加一个检查，确保我们处理的是正确的用户对象
+        const user = currentUser.user || currentUser;
+
         // 用户已登录
-        userNameEl.textContent = `${currentUser.name || currentUser.username}`;
+        userNameEl.textContent = `${user.name || user.username}`;
         
-        if(currentUser.avatar_url) {
+        if(user.avatar_url) {
             // 注释掉本地服务器路径，改为条件检查
             // 如果头像URL是完整路径则直接使用，否则显示默认头像
-            if(currentUser.avatar_url.startsWith('http')) {
-                userAvatar.style.backgroundImage = `url(${currentUser.avatar_url})`;
+            if(user.avatar_url.startsWith('http')) {
+                userAvatar.style.backgroundImage = `url(${user.avatar_url})`;
             } else {
                 // 默认显示首字母
-                userAvatar.textContent = currentUser.username.charAt(0).toUpperCase();
+                userAvatar.textContent = user.username.charAt(0).toUpperCase();
             }
             userAvatar.style.backgroundSize = 'cover';
             userAvatar.style.backgroundPosition = 'center';
         } else {
-            userAvatar.textContent = currentUser.username.charAt(0).toUpperCase();
+            userAvatar.textContent = user.username.charAt(0).toUpperCase();
         }
         
         const welcomeText = '欢迎回来！';
