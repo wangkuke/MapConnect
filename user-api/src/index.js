@@ -42,6 +42,15 @@ async function verifyPassword(password, hashedPassword) {
 	return hashToVerify === hashedPassword;
 }
 
+const routes = {
+	'GET /health': handleHealthCheck,
+	'POST /register': handleRegister,
+	'POST /login': handleLogin,
+	'GET /markers': handleGetMarkers,
+	'POST /markers': handleCreateMarker,
+	// ... 其他路由
+};
+
 export default {
 	async fetch(request, env, ctx) {
 		const url = new URL(request.url);
