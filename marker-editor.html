@@ -724,7 +724,7 @@
                     visibility: visibility
                 };
                 
-                console.log('发送标注数据:', markerData);
+                console.log('发送标注数据 (JSON格式):', JSON.stringify(markerData, null, 2));
                 
                 // 使用 apiService 创建标注
                 apiService.createMarker(markerData)
