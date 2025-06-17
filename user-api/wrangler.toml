@@ -1,0 +1,24 @@
+name = "user-api"
+main = "src/index.js"
+compatibility_date = "2025-06-17"
+
+# 重试配置（当请求失败时的重试策略）
+[retry]
+max_retries = 3
+min_delay = 100 # 毫秒
+jitter = true # 添加随机抖动，避免所有重试同时发生
+
+# 构建命令，确保更强的请求处理
+build.command = "npm run build"
+
+# 环境变量配置
+[vars]
+CORS_ORIGINS = "*"
+API_VERSION = "1.0.0"
+BACKUP_API_URL = "https://backup-api.532736720.workers.dev"
+
+# 数据库绑定配置
+[[d1_databases]]
+binding = "DB"
+database_name = "users-db"
+database_id = "5d51eb2b-9fd5-4b1c-85c8-fd95919b5b10" 
