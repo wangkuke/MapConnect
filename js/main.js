@@ -260,13 +260,14 @@ window.addEventListener('DOMContentLoaded', () => {
 
 const modal = document.getElementById('profile-modal');
 const modalOverlay = document.getElementById('profile-modal-overlay');
+const API_BASE_URL = 'https://user-api.532736720.workers.dev';
 
 function showUserProfileModal(username) {
     modal.innerHTML = `<div class="loading">正在加载用户资料...</div>`;
     modal.classList.add('active');
     modalOverlay.classList.add('active');
 
-    fetch(`http://localhost:5000/api/users/${username}`)
+    fetch(`${API_BASE_URL}/users/${username}`)
         .then(response => {
             if (!response.ok) {
                 if (response.status === 404) throw new Error('用户不存在');
@@ -280,7 +281,7 @@ function showUserProfileModal(username) {
             });
 
             const avatarContent = user.avatar_url ? '' : (user.name || user.username).charAt(0).toUpperCase();
-            const avatarStyle = user.avatar_url ? `background-image: url(http://localhost:5000${user.avatar_url});` : '';
+            const avatarStyle = user.avatar_url ? `background-image: url(${user.avatar_url.startsWith('http') ? user.avatar_url : API_BASE_URL + user.avatar_url});` : '';
 
             const displayName = user.name || user.username; // Fallback to username if name is not set
 
