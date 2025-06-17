@@ -221,24 +221,26 @@ async function handleLogin(request, env) {
  */
 async function handleGetMarkers(request, env) {
 	try {
-		// 从数据库中查询所有公开和有效的标注
+		// 从数据库中查询所有公开的、有效的markers
 		const ps = env.DB.prepare(
-			`SELECT m.*, u.username as user_username, u.name as user_name 
-			 FROM markers m 
-			 JOIN users u ON m.user_id = u.id 
-			 WHERE m.status = 'active'`
+			`SELECT m.id, m.lat, m.lng, m.title, m.description, m.marker_type, m.contact, 
+			        u.name as user_name, u.username as user_username
+			 FROM markers m
+			 JOIN users u ON m.user_id = u.id
+			 WHERE m.status = 'active' AND m.is_private = 0`
 		);
 		const { results } = await ps.all();
-		
+
 		return new Response(JSON.stringify(results), {
 			status: 200,
-			headers: { 'Content-Type': 'application/json' }
+			headers: { 'Content-Type': 'application/json' },
 		});
+
 	} catch (e) {
 		console.error('获取markers时发生错误:', e);
 		return new Response(JSON.stringify({ error: '发生内部服务器错误' }), {
 			status: 500,
-			headers: { 'Content-Type': 'application/json' }
+			headers: { 'Content-Type': 'application/json' },
 		});
 	}
 }
@@ -268,12 +270,12 @@ async function handleCreateMarker(request, env) {
 
     try {
         const ps = env.DB.prepare(
-            `INSERT INTO markers (user_id, title, description, lat, lng, type, marker_type, start_time, end_time, contact, cost, is_private, status)
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+            `INSERT INTO markers (user_id, title, description, lat, lng, type, marker_type, start_time, end_time, contact, cost, is_private)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
         ).bind(
             user_id, title, description || null, lat, lng, type || null, 
             marker_type || 'personal', start_time || null, end_time || null, 
-            contact || null, cost || null, is_private ? 1 : 0, 'active'
+            contact || null, cost || null, is_private ? 1 : 0
         );
         
         await ps.run();
