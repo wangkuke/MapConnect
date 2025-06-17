@@ -301,12 +301,27 @@ async function handleCreateMarker(request, env) {
     const finalLat = latitude !== undefined ? latitude : lat;
     const finalLng = longitude !== undefined ? longitude : lng;
 
-    if (!user_id || !title || (finalLat === undefined || finalLng === undefined)) {
+    // 更严格的验证
+    if (!user_id) {
+        return new Response(JSON.stringify({ error: '验证失败: 缺少 user_id' }), { 
+            status: 400, headers: { 'Content-Type': 'application/json' } 
+        });
+    }
+    if (!title || title.trim() === '') {
+        return new Response(JSON.stringify({ error: '缺少必需字段: 标题' }), { 
+            status: 400, headers: { 'Content-Type': 'application/json' } 
+        });
+    }
+    if (!description || description.trim() === '') {
+        return new Response(JSON.stringify({ error: '缺少必需字段: 详细描述' }), { 
+            status: 400, headers: { 'Content-Type': 'application/json' } 
+        });
+    }
+    if (finalLat === undefined || finalLng === undefined) {
         return new Response(JSON.stringify({ 
-            error: '缺少必需字段: user_id, title, 以及坐标信息(latitude/longitude 或 lat/lng)' 
+            error: '缺少坐标信息' 
         }), { 
-            status: 400,
-            headers: { 'Content-Type': 'application/json' } 
+            status: 400, headers: { 'Content-Type': 'application/json' } 
         });
     }
 
