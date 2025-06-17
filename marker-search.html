@@ -593,25 +593,39 @@
         // --- Event Listeners and Initial Load ---
         
         document.addEventListener('DOMContentLoaded', () => {
-            fetch('http://localhost:5000/api/markers')
-                .then(response => {
-                    if (!response.ok) throw new Error('Network response was not ok');
-                    return response.json();
-                })
-                .then(markers => {
-                    allMarkersData = markers;
-                    updateAndRender(); // Initial render
-                })
-                .catch(error => {
-                    console.error('Error fetching markers:', error);
-                    const listContainer = document.getElementById('markers-list');
-                    listContainer.innerHTML = `
-                        <div class="no-results">
-                            <i class="fas fa-exclamation-triangle"></i>
-                            <p>加载标注失败</p>
-                            <span>请检查后端服务是否正在运行并刷新页面。</span>
-                        </div>`;
-                });
+            const API_BASE_URL = 'https://user-api.532736720.workers.dev';
+
+            // --- DEBOUNCED SEARCH ---
+            const debouncedSearch = debounce(searchTerm => {
+                if (!searchTerm || searchTerm.length < 2) {
+                    resultsContainer.innerHTML = '<div class="info-message"><i class="fas fa-search"></i> 请输入至少2个字符开始搜索</div>';
+                    return;
+                }
+                
+                resultsContainer.innerHTML = '<div class="info-message loading"><i class="fas fa-spinner fa-spin"></i> 正在搜索...</div>';
+                
+                // 注意：在真实应用中，您的API应该支持关键词搜索
+                // 为简化，我们获取所有markers然后在前端进行过滤
+                fetch(`${API_BASE_URL}/markers`)
+                    .then(response => {
+                        if (!response.ok) throw new Error('网络响应错误');
+                        return response.json();
+                    })
+                    .then(markers => {
+                        allMarkersData = markers;
+                        updateAndRender(); // Initial render
+                    })
+                    .catch(error => {
+                        console.error('Error fetching markers:', error);
+                        const listContainer = document.getElementById('markers-list');
+                        listContainer.innerHTML = `
+                            <div class="no-results">
+                                <i class="fas fa-exclamation-triangle"></i>
+                                <p>加载标注失败</p>
+                                <span>请检查后端服务是否正在运行并刷新页面。</span>
+                            </div>`;
+                    });
+            });
 
             // Filter options event listener
             document.querySelectorAll('.filter-option').forEach(option => {
