@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>MapConnect - 我的标注</title>
+    <script src="js/api-service.js"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
     <style>
         :root {
@@ -284,49 +285,26 @@
     </div>
 
     <script>
-        const API_BASE_URL = 'https://user-api.532736720.workers.dev';
-        const currentUser = JSON.parse(sessionStorage.getItem('mapconnect_currentUser'));
-        const username = currentUser ? currentUser.username : null;
-
         document.addEventListener('DOMContentLoaded', function() {
-            if (!currentUser) {
+            const currentUser = JSON.parse(sessionStorage.getItem('mapconnect_currentUser'));
+            if (!currentUser || !currentUser.username) {
                 document.body.innerHTML = '<h1>请先登录</h1><p><a href="user-system.html">点击这里登录</a></p>';
                 return;
             }
-
-            // 初始化加载标记
-            fetchMarkers();
+            fetchMarkers(currentUser.username);
         });
 
-        // 添加fetchMarkers函数用于加载标记
-        function fetchMarkers() {
+        function fetchMarkers(username) {
             const markersContainer = document.getElementById('markers-container');
             markersContainer.innerHTML = '<p>正在加载您的标注...</p>';
-
-            // Fetch user's markers
-            fetch(`${API_BASE_URL}/markers/${username}`, {
-                method: 'GET',
-                headers: { 'Content-Type': 'application/json' }
-            })
-            .then(handleResponse)
-            .then(markers => {
-                renderMarkers(markers);
-            })
-            .catch(error => {
-                console.error('获取标注失败:', error);
-                if (markersContainer) {
-                    markersContainer.innerHTML = '<p>加载您的标注时出错，请稍后再试。</p>';
-                }
-            });
-        }
-
-        function handleResponse(response) {
-            if (!response.ok) {
-                return response.json()
-                    .then(err => { throw new Error(err.error || `HTTP error! status: ${response.status}`) })
-                    .catch(() => { throw new Error(`HTTP error! status: ${response.status}`) });
-            }
-            return response.json();
+            
+            // 使用 apiService 获取用户标注
+            apiService.getUserMarkers(username)
+                .then(renderMarkers)
+                .catch(error => {
+                    console.error('获取标注失败:', error);
+                    markersContainer.innerHTML = `<p>加载您的标注时出错: ${error.message}</p>`;
+                });
         }
 
         const typeMap = {
@@ -410,49 +388,34 @@
 
         function toggleStatus(toggleElement, cardElement, markerId) {
             const isOnline = toggleElement.checked;
-            // 乐观UI更新
             cardElement.classList.toggle('offline', !isOnline);
             
-            fetch(`${API_BASE_URL}/markers/${markerId}/status`, {
-                method: 'PUT',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'X-User-Username': username
-                },
-                body: JSON.stringify({ status: isOnline ? 'active' : 'inactive' })
-            })
-            .then(handleResponse)
-            .then(data => {
-                console.log('状态更新成功:', data.message);
-            })
-            .catch(error => {
-                console.error(`ID为 ${markerId} 的标注更新失败:`, error);
-                alert(`状态更新失败: ${error.message}`);
-                // 失败时回滚UI
-                cardElement.classList.toggle('offline', isOnline);
-                toggleElement.checked = !isOnline;
-            });
+            // 使用 apiService 更新状态
+            apiService.updateMarkerStatus(markerId, isOnline ? 'active' : 'inactive')
+                .then(data => {
+                    console.log('状态更新成功:', data.message);
+                })
+                .catch(error => {
+                    console.error(`ID为 ${markerId} 的标注更新失败:`, error);
+                    alert(`状态更新失败: ${error.message}`);
+                    cardElement.classList.toggle('offline', isOnline);
+                    toggleElement.checked = !isOnline;
+                });
         }
 
         function deleteMarker(markerId, cardElement) {
             if (!confirm('确定要永久删除这个标注吗？此操作不可撤销。')) return;
-
-            fetch(`${API_BASE_URL}/markers/${markerId}`, {
-                method: 'DELETE',
-                headers: { 
-                    'Content-Type': 'application/json',
-                    'X-User-Username': username
-                }
-            })
-            .then(handleResponse)
-            .then(() => {
-                console.log(`ID为 ${markerId} 的标注删除成功`);
-                cardElement.remove(); // 直接从DOM中移除卡片，无需重新获取所有数据
-            })
-            .catch(error => {
-                console.error(`删除ID为 ${markerId} 的标注失败:`, error);
-                alert(`删除失败: ${error.message}`);
-            });
+            
+            // 使用 apiService 删除标注
+            apiService.deleteMarker(markerId)
+                .then(() => {
+                    console.log(`ID为 ${markerId} 的标注删除成功`);
+                    cardElement.remove();
+                })
+                .catch(error => {
+                    console.error(`删除ID为 ${markerId} 的标注失败:`, error);
+                    alert(`删除失败: ${error.message}`);
+                });
         }
     </script>
 </body>
