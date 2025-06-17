@@ -1,7 +1,40 @@
-// 引入一个轻量级的路由处理器
-import { Router } from 'itty-router';
+// --- itty-router v2.x ---
+// 我们将 itty-router 的代码直接内联，以避免任何外部依赖或构建步骤。
+const Router = ({ base = '', routes = [] } = {}) => ({
+	__proto__: new Proxy({}, {
+		get: (target, prop, receiver) => (route, ...handlers) =>
+			routes.push([
+				prop.toUpperCase(),
+				RegExp(`^${(base + route)
+					.replace(/(\/?)\*/g, '($1.*)?')
+					.replace(/\/$/, '')
+					.replace(/:(\w+)(\?)?(\.)?/g, '$2(?<$1>[^/]+)$2$3')
+				}\/*$`),
+				handlers,
+			]) && receiver
+	}),
+	routes,
+	handle: (request, ...args) => {
+		let response,
+			url = new URL(request.url),
+			{ pathname } = url;
 
-// 创建一个新的路由实例
+		for (var [method, route, handlers] of routes) {
+			if (method === request.method || method === 'ALL') {
+				let match = pathname.match(route);
+				if (match) {
+					request.params = match.groups;
+					request.query = Object.fromEntries(url.searchParams.entries());
+
+					for (var handler of handlers) {
+						if ((response = handler(request, ...args)) !== undefined) return response;
+					}
+				}
+			}
+		}
+	}
+});
+
 const router = Router();
 
 // CORS头，允许所有域的请求
@@ -49,39 +82,23 @@ async function verifyPassword(password, hashedPassword) {
 }
 
 // --- 路由定义 ---
-
-// 根路径
 router.get('/', () => new Response('Hello from your User API! Database is connected.'));
-
-// 健康检查
 router.get('/health', handleHealthCheck);
-
-// 认证
 router.post('/register', handleRegister);
 router.post('/login', handleLogin);
-
-// 用户资料
 router.get('/users/:username', handleGetUserProfile);
 router.put('/users/:username', handleUpdateProfile);
 router.post('/avatar', handleAvatarUpload);
-
-// 标注
 router.get('/markers', handleGetMarkers);
 router.post('/markers', handleCreateMarker);
 router.get('/markers/:username', handleGetUserMarkers);
 router.put('/markers/:id/status', handleUpdateMarkerStatus);
 router.put('/markers/:id', handleUpdateMarker);
 router.delete('/markers/:id', handleDeleteMarker);
-
-// 兜底路由，处理所有未匹配的请求
 router.all('*', () => new Response('Not Found', { status: 404 }));
-
-
-// --- 全局中间件和主入口 ---
 
 export default {
 	async fetch(request, env, ctx) {
-		// OPTIONS 请求预检
 		if (request.method === 'OPTIONS') {
 			return handleOptions();
 		}
@@ -355,7 +372,8 @@ async function handleCreateMarker(request, env) {
  * @param {string} username
  * @returns {Response}
  */
-async function handleGetUserMarkers(request, env, username) {
+async function handleGetUserMarkers(request, env) {
+	const { username } = request.params;
 	if (!username) {
 		return new Response(JSON.stringify({ error: '必须提供用户名' }), { status: 400 });
 	}
@@ -396,7 +414,8 @@ async function handleGetUserMarkers(request, env, username) {
  * @param {string} username
  * @returns {Response}
  */
-async function handleGetUserProfile(request, env, username) {
+async function handleGetUserProfile(request, env) {
+	const { username } = request.params;
 	if (!username) {
 		return new Response(JSON.stringify({ error: '必须提供用户名' }), { status: 400 });
 	}
@@ -429,6 +448,7 @@ async function handleGetUserProfile(request, env, username) {
  * @returns {Response}
  */
 async function handleUpdateProfile(request, env) {
+	const { username } = request.params;
 	let profileData;
 	try {
 		profileData = await request.json();
@@ -439,7 +459,7 @@ async function handleUpdateProfile(request, env) {
 		});
 	}
 
-	const { username, name, contact, bio, gender, age } = profileData;
+	const { name, contact, bio, gender, age } = profileData;
 
 	if (!username) {
 		return new Response(JSON.stringify({ error: '缺少识别用户所需的`username`字段' }), {
@@ -582,7 +602,8 @@ async function handleHealthCheck(request, env) {
  * @param {string} markerId 标记ID
  * @returns {Response}
  */
-async function handleUpdateMarkerStatus(request, env, markerId) {
+async function handleUpdateMarkerStatus(request, env) {
+	const { id: markerId } = request.params;
 	if (!markerId) {
 		return new Response(JSON.stringify({ error: '缺少标记ID' }), {
 			status: 400,
@@ -670,7 +691,8 @@ async function handleUpdateMarkerStatus(request, env, markerId) {
  * @param {string} markerId 标记ID
  * @returns {Response}
  */
-async function handleUpdateMarker(request, env, markerId) {
+async function handleUpdateMarker(request, env) {
+	const { id: markerId } = request.params;
 	if (!markerId) {
 		return new Response(JSON.stringify({ error: '缺少标记ID' }), {
 			status: 400,
@@ -774,7 +796,8 @@ async function handleUpdateMarker(request, env, markerId) {
  * @param {string} markerId 标记ID
  * @returns {Response}
  */
-async function handleDeleteMarker(request, env, markerId) {
+async function handleDeleteMarker(request, env) {
+	const { id: markerId } = request.params;
 	if (!markerId) {
 		return new Response(JSON.stringify({ error: '缺少标记ID' }), {
 			status: 400,
