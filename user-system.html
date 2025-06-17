@@ -538,7 +538,12 @@
 
             const avatarCircle = document.querySelector('.avatar-circle');
             if (currentUser.avatar_url) {
-                avatarCircle.style.backgroundImage = `url(http://localhost:5000${currentUser.avatar_url})`;
+                let avatarUrl = currentUser.avatar_url;
+                // 如果URL不是完整的，就拼接API基地址
+                if (!avatarUrl.startsWith('http')) {
+                    avatarUrl = `${API_BASE_URL}${avatarUrl}`;
+                }
+                avatarCircle.style.backgroundImage = `url(${avatarUrl})`;
                 avatarCircle.textContent = ''; // Clear the initial text
             } else {
                 avatarCircle.style.backgroundImage = 'none';
@@ -712,7 +717,8 @@
             fetch(`${API_BASE_URL}/avatar`, {
                 method: 'POST',
                 headers: {
-                    'Authorization': `Bearer ${localStorage.getItem('token')}`
+                    // 传递用户名用于身份识别，代替Token认证（临时方案）
+                    'X-User-Username': currentUser.username
                 },
                 body: formData
             })
