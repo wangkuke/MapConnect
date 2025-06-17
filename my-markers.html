@@ -284,123 +284,94 @@
     </div>
 
     <script>
-        document.addEventListener('DOMContentLoaded', () => {
+        document.addEventListener('DOMContentLoaded', function() {
             const currentUser = JSON.parse(sessionStorage.getItem('mapconnect_currentUser'));
+            const API_BASE_URL = 'https://user-api.532736720.workers.dev';
+
             if (!currentUser) {
-                alert('请先登录以查看您的标注。');
-                window.location.href = 'user-system.html';
+                document.body.innerHTML = '<h1>请先登录</h1><p><a href="user-system.html">点击这里登录</a></p>';
                 return;
             }
-            initializeApp(currentUser);
-        });
 
-        function initializeApp(currentUser) {
-            const markersContainer = document.getElementById('my-markers-list');
             const username = currentUser.username;
-            const typeMap = {
-                personal: '个人',
-                business: '企业',
-                official: '官方',
-                charity: '公益'
-            };
+            const markersContainer = document.getElementById('markers-container');
 
-            const fetchMarkers = () => {
-                fetch(`http://localhost:5000/api/markers/${username}`, {
-                    headers: { 'X-User-Username': username }
-                })
-                .then(response => {
-                    if (response.status === 401 || response.status === 403) {
-                         alert('身份验证失败，请重新登录。');
-                         sessionStorage.removeItem('mapconnect_currentUser');
-                         window.location.href = 'user-system.html';
-                         return Promise.reject('Authentication failed');
-                    }
-                    if (!response.ok) {
-                        throw new Error('网络响应错误');
-                    }
-                    return response.json();
-                })
-                .then(markers => {
-                    renderMarkers(markers);
-                })
-                .catch(error => {
-                    console.error('获取标注失败:', error);
-                    if (error !== 'Authentication failed') {
-                       markersContainer.innerHTML = '<p>加载您的标注时出错，请稍后再试。</p>';
-                    }
-                });
-            };
-            
-            const renderMarkers = (markers) => {
-                markersContainer.innerHTML = '';
-                if (markers.length === 0) {
-                    markersContainer.innerHTML = '<p>您还没有创建任何标注。 <a href="marker-editor.html">去创建一个！</a></p>';
-                    return;
-                }
-                markers.forEach(marker => {
-                    const card = document.createElement('div');
-                    const isOffline = marker.status !== 'active';
-                    const isPast = new Date(marker.expires_at) < new Date();
-                    
-                    let cardClass = 'my-marker-card';
-                    if(isPast) cardClass += ' past';
-                    if(isOffline) cardClass += ' offline';
-                    
-                    card.className = cardClass;
-
-                    const markerTypeDisplay = typeMap[marker.marker_type] || marker.marker_type;
-
-                    card.innerHTML = `
-                        <div class="card-header">
-                            <h3><i class="fas fa-map-pin"></i> ${marker.title}</h3>
-                            <div class="status">
-                                <span>${isOffline ? '已下线' : (isPast ? '已过期' : '在线')}</span>
-                                <label class="switch">
-                                    <input type="checkbox" class="status-toggle" data-id="${marker.id}" ${marker.status === 'active' ? 'checked' : ''} ${isPast ? 'disabled' : ''}>
-                                    <span class="slider round"></span>
-                                </label>
-                            </div>
-                        </div>
-                        <p>类型：${markerTypeDisplay}</p>
-                        <p>${marker.description}</p>
-                        <div class="card-footer">
-                            <div class="expiration-info">
-                                <i class="fas fa-clock"></i> 
-                                <span>过期时间: ${new Date(marker.expires_at).toLocaleString()}</span>
-                            </div>
-                            <div class="actions">
-                                <button class="btn btn-secondary" onclick="alert('编辑功能待实现')">编辑</button>
-                            </div>
-                        </div>
-                    `;
-                    markersContainer.appendChild(card);
-                });
-            };
-            
-            markersContainer.addEventListener('change', (e) => {
-                if (e.target.classList.contains('status-toggle')) {
-                    const markerId = e.target.dataset.id;
-                    const newStatus = e.target.checked ? 'active' : 'inactive';
-                    updateMarkerStatus(markerId, newStatus);
+            // Fetch user's markers
+            fetch(`${API_BASE_URL}/markers/${username}`, {
+                method: 'GET',
+                headers: { 'Content-Type': 'application/json' }
+            })
+            .then(handleResponse)
+            .then(markers => {
+                renderMarkers(markers);
+            })
+            .catch(error => {
+                console.error('获取标注失败:', error);
+                if (error !== 'Authentication failed') {
+                   markersContainer.innerHTML = '<p>加载您的标注时出错，请稍后再试。</p>';
                 }
             });
+        });
 
-            const updateMarkerStatus = (markerId, status) => {
-                fetch(`http://localhost:5000/api/markers/${markerId}/status`, {
+        function renderMarkers(markers) {
+            const markersContainer = document.getElementById('markers-container');
+            markersContainer.innerHTML = '';
+            if (markers.length === 0) {
+                markersContainer.innerHTML = '<p>您还没有创建任何标注。 <a href="marker-editor.html">去创建一个！</a></p>';
+                return;
+            }
+            markers.forEach(marker => {
+                const card = document.createElement('div');
+                const isOffline = marker.status !== 'active';
+                const isPast = new Date(marker.expires_at) < new Date();
+                
+                let cardClass = 'my-marker-card';
+                if(isPast) cardClass += ' past';
+                if(isOffline) cardClass += ' offline';
+                
+                card.className = cardClass;
+
+                const markerTypeDisplay = typeMap[marker.marker_type] || marker.marker_type;
+
+                card.innerHTML = `
+                    <div class="card-header">
+                        <h3><i class="fas fa-map-pin"></i> ${marker.title}</h3>
+                        <div class="status">
+                            <span>${isOffline ? '已下线' : (isPast ? '已过期' : '在线')}</span>
+                            <label class="switch">
+                                <input type="checkbox" class="status-toggle" data-id="${marker.id}" ${marker.status === 'active' ? 'checked' : ''} ${isPast ? 'disabled' : ''}>
+                                <span class="slider round"></span>
+                            </label>
+                        </div>
+                    </div>
+                    <p>类型：${markerTypeDisplay}</p>
+                    <p>${marker.description}</p>
+                    <div class="card-footer">
+                        <div class="expiration-info">
+                            <i class="fas fa-clock"></i> 
+                            <span>过期时间: ${new Date(marker.expires_at).toLocaleString()}</span>
+                        </div>
+                        <div class="actions">
+                            <button class="btn btn-secondary" onclick="alert('编辑功能待实现')">编辑</button>
+                        </div>
+                    </div>
+                `;
+                markersContainer.appendChild(card);
+            });
+
+            // Toggle status
+            const toggle = card.querySelector('.switch input');
+            toggle.addEventListener('change', function() {
+                const isOnline = this.checked;
+                fetch(`${API_BASE_URL}/markers/${marker.id}/status`, {
                     method: 'PUT',
                     headers: {
                         'Content-Type': 'application/json',
                         'X-User-Username': username
                     },
-                    body: JSON.stringify({ status })
+                    body: JSON.stringify({ status: isOnline ? 'active' : 'inactive' })
                 })
-                .then(response => {
-                    if (!response.ok) {
-                        // If update fails, revert the toggle and alert user
-                        throw new Error('状态更新失败');
-                    }
-                    return response.json();
-                })
+                .then(handleResponse)
                 .then(data => {
                     console.log('状态更新成功:', data.message);
                     // Optionally, you can give a more visual feedback
@@ -412,9 +383,25 @@
                     // Re-fetch to revert the visual state of the toggle
                     fetchMarkers();
                 });
-            };
+            });
+        }
 
-            fetchMarkers();
+        function deleteMarker(markerId) {
+            if (!confirm('确定要永久删除这个标注吗？此操作不可撤销。')) return;
+
+            fetch(`${API_BASE_URL}/markers/${markerId}`, {
+                method: 'DELETE',
+                headers: { 'Content-Type': 'application/json' }
+            })
+            .then(handleResponse)
+            .then(() => {
+                console.log('标注删除成功');
+                fetchMarkers();
+            })
+            .catch(error => {
+                console.error('删除失败:', error);
+                alert(error.message);
+            });
         }
     </script>
 </body>
