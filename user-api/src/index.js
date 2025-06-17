@@ -2,7 +2,7 @@
 const corsHeaders = {
 	'Access-Control-Allow-Origin': '*',
 	'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
-	'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+	'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-User-Username',
 };
 
 // 添加CORS头到响应中
@@ -116,8 +116,8 @@ async function handleRegister(request, env) {
 
 	// 3. 验证必需的字段是否存在
 	const { username, password, email, gender } = userData;
-	if (!username || !password || !email || !gender) {
-		const missingFields = ['username', 'password', 'email', 'gender'].filter(field => !userData[field]);
+	if (!username || !password || !email) {
+		const missingFields = ['username', 'password', 'email'].filter(field => !userData[field]);
 		return new Response(JSON.stringify({ error: `缺少必需的字段: ${missingFields.join(', ')}` }), {
 			status: 400,
 			headers: { 'Content-Type': 'application/json' },
@@ -130,7 +130,7 @@ async function handleRegister(request, env) {
 		const hashedPassword = await hashPassword(password);
 		const ps = env.DB.prepare(
 			'INSERT INTO users (username, password, email, gender) VALUES (?, ?, ?, ?)'
-		).bind(username, hashedPassword, email, gender); // 存储哈希后的密码
+		).bind(username, hashedPassword, email, gender || 'secret'); // 如果gender未提供，则默认为'secret'
 
 		await ps.run();
 
