@@ -692,8 +692,16 @@
                 const visibility = document.getElementById('marker-visibility').value;
                 
                 // 验证必填项
-                if (!title || !currentLatLng) {
-                    alert('标题和位置是必填项！');
+                if (!title.trim()) {
+                    alert('标题是必填项！');
+                    return;
+                }
+                if (!description.trim()) {
+                    alert('详细描述是必填项！');
+                    return;
+                }
+                if (!currentLatLng) {
+                    alert('位置是必填项！请在地图上点击选择位置。');
                     return;
                 }
                 
