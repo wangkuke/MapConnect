@@ -474,12 +474,12 @@
             <form id="marker-form" class="animate delay-2">
                 <div class="form-group">
                     <label for="marker-title">标注标题</label>
-                    <input type="text" id="marker-title" placeholder="例如：人民公园足球场" required>
+                    <input type="text" id="marker-title" name="title" placeholder="例如：人民公园足球场" required>
                 </div>
 
                 <div class="form-group">
                     <label for="marker-type">标注类型</label>
-                    <select id="marker-type" required>
+                    <select id="marker-type" name="marker_type" required>
                         <option value="personal" selected>个人</option>
                         <option value="business">企业</option>
                         <option value="official">官方</option>
@@ -489,17 +489,17 @@
 
                 <div class="form-group">
                     <label for="marker-description">详细描述</label>
-                    <textarea id="marker-description" placeholder="描述活动详情、时间、要求等信息..." required></textarea>
+                    <textarea id="marker-description" name="description" placeholder="描述活动详情、时间、要求等信息..." required></textarea>
                 </div>
 
                 <div class="form-group">
                     <label for="marker-contact">联系方式</label>
-                    <input type="text" id="marker-contact" placeholder="手机号码、微信或其他联系方式">
+                    <input type="text" id="marker-contact" name="contact" placeholder="手机号码、微信或其他联系方式">
                 </div>
 
                 <div class="form-group">
                     <label for="marker-visibility">可见性</label>
-                    <select id="marker-visibility">
+                    <select id="marker-visibility" name="visibility">
                         <option value="today">当日可见</option>
                         <option value="three_days">三日可见</option>
                     </select>
@@ -744,49 +744,54 @@
                 }
             });
 
-            // 表单提交事件
+            // 全局API基地址
+            const API_BASE_URL = 'https://user-api.532736720.workers.dev';
+
+            // 表单提交
             document.getElementById('marker-form').addEventListener('submit', function(e) {
                 e.preventDefault();
-                
-                const formData = {
-                    title: document.getElementById('marker-title').value,
-                    description: document.getElementById('marker-description').value,
-                    contact: document.getElementById('marker-contact').value,
-                    marker_type: document.getElementById('marker-type').value,
-                    visibility: document.getElementById('marker-visibility').value,
-                    lat: parseFloat(document.getElementById('lat').textContent),
-                    lng: parseFloat(document.getElementById('lng').textContent),
-                    user_username: currentUser.username
-                };
 
-                if (isNaN(formData.lat) || isNaN(formData.lng)) {
-                    alert('无效的坐标。请在地图上点击选择一个位置。');
+                const currentUser = JSON.parse(sessionStorage.getItem('mapconnect_currentUser'));
+                if (!currentUser) {
+                    alert('请先登录后再发布标注！');
+                    window.location.href = 'user-system.html';
                     return;
                 }
 
-                fetch('http://localhost:5000/api/markers', {
+                const formData = new FormData(this);
+                const data = Object.fromEntries(formData.entries());
+                data.lat = parseFloat(document.getElementById('lat').textContent);
+                data.lng = parseFloat(document.getElementById('lng').textContent);
+                data.cost = data.cost ? parseFloat(data.cost) : null;
+                data.is_private = document.getElementById('marker-visibility').value === 'today';
+                data.user_id = currentUser.id;
+
+                if (isNaN(data.lat) || isNaN(data.lng)) {
+                    alert('请在地图上点击以确定标注的位置！');
+                    return;
+                }
+                
+                // 移除 action 和 method 属性，使用 fetch
+                fetch(`${API_BASE_URL}/markers`, {
                     method: 'POST',
                     headers: {
-                        'Content-Type': 'application/json'
+                        'Content-Type': 'application/json',
                     },
-                    body: JSON.stringify(formData)
+                    body: JSON.stringify(data)
                 })
-                .then(async response => {
-                    const data = await response.json();
+                .then(response => {
                     if (!response.ok) {
-                        // Throw an error with the message from the backend
-                        throw new Error(data.error || `HTTP error! status: ${response.status}`);
+                        return response.json().then(err => { throw new Error(err.error || '创建标注失败') });
                     }
-                    return data;
+                    return response.json();
                 })
                 .then(data => {
-                    alert('标注发布成功！');
+                    alert(data.message || '标注创建成功！');
                     window.location.href = 'index.html';
                 })
                 .catch(error => {
                     console.error('Error creating marker:', error);
-                    // Display the specific error message from the backend
-                    alert(`发布失败: ${error.message}`);
+                    alert(`创建标注时出错: ${error.message}`);
                 });
             });
         }
