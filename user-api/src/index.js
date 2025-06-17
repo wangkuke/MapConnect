@@ -42,6 +42,33 @@ async function verifyPassword(password, hashedPassword) {
 	return hashToVerify === hashedPassword;
 }
 
+// 添加更健壮的错误处理
+async function handleWithErrorHandling(handler, fallbackResponse = null) {
+    try {
+        return await handler();
+    } catch (error) {
+        console.error(`API错误: ${error.message}`, error.stack);
+        
+        // 如果提供了回退响应，则使用它
+        if (fallbackResponse) {
+            return fallbackResponse;
+        }
+        
+        // 默认错误响应
+        return new Response(
+            JSON.stringify({
+                error: '服务暂时不可用，请稍后再试',
+                code: 'SERVICE_UNAVAILABLE',
+                timestamp: new Date().toISOString()
+            }),
+            { 
+                status: 503, 
+                headers: { 'Content-Type': 'application/json' }
+            }
+        );
+    }
+}
+
 export default {
 	async fetch(request, env, ctx) {
 		const url = new URL(request.url);
@@ -51,40 +78,68 @@ export default {
 			return handleOptions();
 		}
 
+        // 健康检查端点
+        if (url.pathname === '/health' && request.method === 'GET') {
+            return handleHealthCheck(request, env);
+        }
+
 		if (url.pathname === '/register' && request.method === 'POST') {
-			return addCorsHeaders(await handleRegister(request, env));
+			return addCorsHeaders(await handleWithErrorHandling(() => handleRegister(request, env)));
 		}
 
 		if (url.pathname === '/login' && request.method === 'POST') {
-			return addCorsHeaders(await handleLogin(request, env));
+			return addCorsHeaders(await handleWithErrorHandling(() => handleLogin(request, env)));
 		}
 
 		if (url.pathname === '/markers' && request.method === 'GET') {
-			return addCorsHeaders(await handleGetMarkers(request, env));
+			return addCorsHeaders(await handleWithErrorHandling(() => handleGetMarkers(request, env)));
 		}
 
 		if (url.pathname === '/markers' && request.method === 'POST') {
-			return addCorsHeaders(await handleCreateMarker(request, env));
+			return addCorsHeaders(await handleWithErrorHandling(() => handleCreateMarker(request, env)));
 		}
 
-		// 新增：根据用户名获取其发布的markers
-		if (url.pathname.startsWith('/markers/') && request.method === 'GET') {
-			const username = url.pathname.split('/')[2];
-			return addCorsHeaders(await handleGetUserMarkers(request, env, username));
+        // 处理标记状态更新
+        const statusMatch = url.pathname.match(/^\/markers\/(\d+)\/status$/);
+        if (statusMatch && request.method === 'PUT') {
+            const markerId = statusMatch[1];
+            return addCorsHeaders(await handleWithErrorHandling(() => handleUpdateMarkerStatus(request, env, markerId)));
+        }
+
+        // 处理标记更新
+        const markerUpdateMatch = url.pathname.match(/^\/markers\/(\d+)$/);
+        if (markerUpdateMatch && request.method === 'PUT') {
+            const markerId = markerUpdateMatch[1];
+            return addCorsHeaders(await handleWithErrorHandling(() => handleUpdateMarker(request, env, markerId)));
+        }
+
+        // 处理标记删除
+        const markerDeleteMatch = url.pathname.match(/^\/markers\/(\d+)$/);
+        if (markerDeleteMatch && request.method === 'DELETE') {
+            const markerId = markerDeleteMatch[1];
+            return addCorsHeaders(await handleWithErrorHandling(() => handleDeleteMarker(request, env, markerId)));
+        }
+
+		// 获取用户的markers
+		const userMarkersMatch = url.pathname.match(/^\/markers\/([^\/]+)$/);
+		if (userMarkersMatch && request.method === 'GET' && !url.pathname.match(/^\/markers\/\d+$/)) {
+			const username = userMarkersMatch[1];
+			return addCorsHeaders(await handleWithErrorHandling(() => handleGetUserMarkers(request, env, username)));
 		}
 
-		// 新增：根据用户名获取用户公开信息
-		if (url.pathname.startsWith('/users/') && request.method === 'GET') {
-			const username = url.pathname.split('/')[2];
-			return addCorsHeaders(await handleGetUserProfile(request, env, username));
+		// 获取用户资料
+		const userProfileMatch = url.pathname.match(/^\/users\/([^\/]+)$/);
+		if (userProfileMatch && request.method === 'GET') {
+			const username = userProfileMatch[1];
+			return addCorsHeaders(await handleWithErrorHandling(() => handleGetUserProfile(request, env, username)));
 		}
 
 		if (url.pathname === '/profile' && request.method === 'PUT') {
-			return addCorsHeaders(await handleUpdateProfile(request, env));
+			return addCorsHeaders(await handleWithErrorHandling(() => handleUpdateProfile(request, env)));
 		}
 
 		if (url.pathname === '/avatar' && request.method === 'POST') {
-			return addCorsHeaders(await handleAvatarUpload(request, env));
+			return addCorsHeaders(await handleWithErrorHandling(() => handleAvatarUpload(request, env)));
 		}
 
 		if (url.pathname === '/') {
@@ -227,7 +282,7 @@ async function handleGetMarkers(request, env) {
 			        u.name as user_name, u.username as user_username
 			 FROM markers m
 			 JOIN users u ON m.user_id = u.id
-			 WHERE m.status = 'active' AND m.is_private = 0`
+			 WHERE m.is_private = 0`
 		);
 		const { results } = await ps.all();
 
@@ -270,12 +325,12 @@ async function handleCreateMarker(request, env) {
 
     try {
         const ps = env.DB.prepare(
-            `INSERT INTO markers (user_id, title, description, lat, lng, type, marker_type, start_time, end_time, contact, cost, is_private)
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+            `INSERT INTO markers (user_id, title, description, lat, lng, type, marker_type, start_time, end_time, contact, cost, is_private, status)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
         ).bind(
             user_id, title, description || null, lat, lng, type || null, 
             marker_type || 'personal', start_time || null, end_time || null, 
-            contact || null, cost || null, is_private ? 1 : 0
+            contact || null, cost || null, is_private ? 1 : 0, 'active'
         );
         
         await ps.run();
@@ -456,5 +511,299 @@ async function handleAvatarUpload(request, env) {
     } catch(e) {
         console.error('上传头像时出错:', e);
         return new Response(JSON.stringify({ error: '发生内部服务器错误' }), { status: 500 });
+    }
+}
+
+// 健康检查端点处理函数
+async function handleHealthCheck(request, env) {
+    try {
+        // 尝试对数据库执行简单查询，确认数据库连接正常
+        const dbTest = await env.DB.prepare("SELECT 1 AS test").first();
+        
+        const response = {
+            status: dbTest && dbTest.test === 1 ? 'ok' : 'error',
+            timestamp: new Date().toISOString(),
+            version: env.API_VERSION || '1.0.0',
+            database: dbTest && dbTest.test === 1 ? 'connected' : 'error',
+            // 如果环境变量中有备用API地址，则返回给客户端
+            backup_api_url: env.BACKUP_API_URL || null
+        };
+        
+        return addCorsHeaders(new Response(JSON.stringify(response), {
+            status: 200,
+            headers: {
+                'Content-Type': 'application/json',
+                'Cache-Control': 'no-store, no-cache, must-revalidate, max-age=0'
+            }
+        }));
+    } catch (error) {
+        const response = {
+            status: 'error',
+            timestamp: new Date().toISOString(),
+            error: error.message,
+            version: env.API_VERSION || '1.0.0',
+            database: 'error',
+            // 即使出错也尝试返回备用API地址
+            backup_api_url: env.BACKUP_API_URL || null
+        };
+        
+        return addCorsHeaders(new Response(JSON.stringify(response), {
+            status: 500,
+            headers: {
+                'Content-Type': 'application/json',
+                'Cache-Control': 'no-store, no-cache, must-revalidate, max-age=0'
+            }
+        }));
+    }
+}
+
+/**
+ * 处理更新标记状态的请求
+ * @param {Request} request
+ * @param {*} env
+ * @param {string} markerId 标记ID
+ * @returns {Response}
+ */
+async function handleUpdateMarkerStatus(request, env, markerId) {
+    if (!markerId) {
+        return new Response(JSON.stringify({ error: '缺少标记ID' }), { 
+            status: 400,
+            headers: { 'Content-Type': 'application/json' }
+        });
+    }
+
+    let statusData;
+    try {
+        statusData = await request.json();
+    } catch (e) {
+        return new Response(JSON.stringify({ error: '无效的JSON格式' }), { 
+            status: 400,
+            headers: { 'Content-Type': 'application/json' }
+        });
+    }
+
+    const { status } = statusData;
+    if (!status) {
+        return new Response(JSON.stringify({ error: '缺少状态信息' }), { 
+            status: 400,
+            headers: { 'Content-Type': 'application/json' }
+        });
+    }
+
+    // 验证状态值是否有效
+    const validStatuses = ['active', 'inactive', 'expired', 'pending', 'deleted'];
+    if (!validStatuses.includes(status)) {
+        return new Response(JSON.stringify({ 
+            error: `无效的状态值。有效值为: ${validStatuses.join(', ')}` 
+        }), { 
+            status: 400,
+            headers: { 'Content-Type': 'application/json' }
+        });
+    }
+
+    try {
+        // 先检查标记是否存在
+        const checkPs = env.DB.prepare('SELECT * FROM markers WHERE id = ?').bind(markerId);
+        const marker = await checkPs.first();
+        
+        if (!marker) {
+            return new Response(JSON.stringify({ error: '找不到指定ID的标记' }), { 
+                status: 404,
+                headers: { 'Content-Type': 'application/json' }
+            });
+        }
+
+        // 更新标记状态
+        const updatePs = env.DB.prepare('UPDATE markers SET status = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?')
+                           .bind(status, markerId);
+        const result = await updatePs.run();
+
+        if (result.meta.changes === 0) {
+            return new Response(JSON.stringify({ error: '更新失败，标记可能不存在或状态未变更' }), { 
+                status: 404,
+                headers: { 'Content-Type': 'application/json' }
+            });
+        }
+
+        // 返回更新后的标记信息
+        const getUpdatedPs = env.DB.prepare('SELECT * FROM markers WHERE id = ?').bind(markerId);
+        const updatedMarker = await getUpdatedPs.first();
+
+        return new Response(JSON.stringify({
+            message: '标记状态已更新',
+            marker: updatedMarker
+        }), { 
+            status: 200,
+            headers: { 'Content-Type': 'application/json' }
+        });
+    } catch (error) {
+        console.error('更新标记状态时出错:', error);
+        return new Response(JSON.stringify({ error: '发生内部服务器错误' }), { 
+            status: 500,
+            headers: { 'Content-Type': 'application/json' }
+        });
+    }
+}
+
+/**
+ * 处理更新标记信息的请求
+ * @param {Request} request
+ * @param {*} env
+ * @param {string} markerId 标记ID
+ * @returns {Response}
+ */
+async function handleUpdateMarker(request, env, markerId) {
+    if (!markerId) {
+        return new Response(JSON.stringify({ error: '缺少标记ID' }), { 
+            status: 400,
+            headers: { 'Content-Type': 'application/json' }
+        });
+    }
+
+    let markerData;
+    try {
+        markerData = await request.json();
+    } catch (e) {
+        return new Response(JSON.stringify({ error: '无效的JSON格式' }), { 
+            status: 400,
+            headers: { 'Content-Type': 'application/json' }
+        });
+    }
+
+    // 检查要更新的字段
+    const {
+        title, description, lat, lng, type, 
+        marker_type, start_time, end_time, contact, cost, is_private
+    } = markerData;
+
+    // 构建更新语句
+    const fields = [];
+    const values = [];
+
+    if (title !== undefined) { fields.push('title = ?'); values.push(title); }
+    if (description !== undefined) { fields.push('description = ?'); values.push(description); }
+    if (lat !== undefined) { fields.push('lat = ?'); values.push(lat); }
+    if (lng !== undefined) { fields.push('lng = ?'); values.push(lng); }
+    if (type !== undefined) { fields.push('type = ?'); values.push(type); }
+    if (marker_type !== undefined) { fields.push('marker_type = ?'); values.push(marker_type); }
+    if (start_time !== undefined) { fields.push('start_time = ?'); values.push(start_time); }
+    if (end_time !== undefined) { fields.push('end_time = ?'); values.push(end_time); }
+    if (contact !== undefined) { fields.push('contact = ?'); values.push(contact); }
+    if (cost !== undefined) { fields.push('cost = ?'); values.push(cost); }
+    if (is_private !== undefined) { fields.push('is_private = ?'); values.push(is_private ? 1 : 0); }
+
+    // 如果没有需要更新的字段
+    if (fields.length === 0) {
+        return new Response(JSON.stringify({ error: '没有提供需要更新的字段' }), { 
+            status: 400,
+            headers: { 'Content-Type': 'application/json' }
+        });
+    }
+
+    // 添加更新时间和ID条件
+    fields.push('updated_at = CURRENT_TIMESTAMP');
+    values.push(markerId);
+
+    const sql = `UPDATE markers SET ${fields.join(', ')} WHERE id = ?`;
+
+    try {
+        // 先检查标记是否存在
+        const checkPs = env.DB.prepare('SELECT * FROM markers WHERE id = ?').bind(markerId);
+        const marker = await checkPs.first();
+        
+        if (!marker) {
+            return new Response(JSON.stringify({ error: '找不到指定ID的标记' }), { 
+                status: 404,
+                headers: { 'Content-Type': 'application/json' }
+            });
+        }
+
+        // 更新标记
+        const updatePs = env.DB.prepare(sql).bind(...values);
+        const result = await updatePs.run();
+
+        if (result.meta.changes === 0) {
+            return new Response(JSON.stringify({ error: '更新失败，标记可能不存在或数据未变更' }), { 
+                status: 404,
+                headers: { 'Content-Type': 'application/json' }
+            });
+        }
+
+        // 返回更新后的标记信息
+        const getUpdatedPs = env.DB.prepare('SELECT * FROM markers WHERE id = ?').bind(markerId);
+        const updatedMarker = await getUpdatedPs.first();
+
+        return new Response(JSON.stringify({
+            message: '标记已更新',
+            marker: updatedMarker
+        }), { 
+            status: 200,
+            headers: { 'Content-Type': 'application/json' }
+        });
+    } catch (error) {
+        console.error('更新标记时出错:', error);
+        return new Response(JSON.stringify({ error: '发生内部服务器错误' }), { 
+            status: 500,
+            headers: { 'Content-Type': 'application/json' }
+        });
+    }
+}
+
+/**
+ * 处理删除标记的请求
+ * @param {Request} request
+ * @param {*} env
+ * @param {string} markerId 标记ID
+ * @returns {Response}
+ */
+async function handleDeleteMarker(request, env, markerId) {
+    if (!markerId) {
+        return new Response(JSON.stringify({ error: '缺少标记ID' }), { 
+            status: 400,
+            headers: { 'Content-Type': 'application/json' }
+        });
+    }
+
+    try {
+        // 先检查标记是否存在
+        const checkPs = env.DB.prepare('SELECT * FROM markers WHERE id = ?').bind(markerId);
+        const marker = await checkPs.first();
+        
+        if (!marker) {
+            return new Response(JSON.stringify({ error: '找不到指定ID的标记' }), { 
+                status: 404,
+                headers: { 'Content-Type': 'application/json' }
+            });
+        }
+
+        // 可以选择真正删除或者标记为已删除
+        // 选项1：真正删除记录
+        const deletePs = env.DB.prepare('DELETE FROM markers WHERE id = ?').bind(markerId);
+        const result = await deletePs.run();
+
+        // 选项2：将状态标记为已删除（软删除）
+        // const deletePs = env.DB.prepare('UPDATE markers SET status = "deleted", updated_at = CURRENT_TIMESTAMP WHERE id = ?').bind(markerId);
+        // const result = await deletePs.run();
+
+        if (result.meta.changes === 0) {
+            return new Response(JSON.stringify({ error: '删除失败，标记可能不存在' }), { 
+                status: 404,
+                headers: { 'Content-Type': 'application/json' }
+            });
+        }
+
+        return new Response(JSON.stringify({
+            message: '标记已成功删除',
+            id: markerId
+        }), { 
+            status: 200,
+            headers: { 'Content-Type': 'application/json' }
+        });
+    } catch (error) {
+        console.error('删除标记时出错:', error);
+        return new Response(JSON.stringify({ error: '发生内部服务器错误' }), { 
+            status: 500,
+            headers: { 'Content-Type': 'application/json' }
+        });
     }
 } 
