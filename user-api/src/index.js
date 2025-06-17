@@ -391,7 +391,7 @@ async function handleGetUserMarkers(request, env, username) {
              FROM markers m
              JOIN users u ON m.user_id = u.id
              WHERE u.username = ?`
-        );
+        ).bind(username);
         const { results } = await ps.all();
         
         // 为每个标记添加一个默认的过期时间（如果它不存在）
