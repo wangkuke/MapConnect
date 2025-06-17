@@ -346,13 +346,15 @@
             markers.forEach(marker => {
                 const card = document.createElement('div');
                 const isOffline = marker.status !== 'active';
-                const isPast = new Date(marker.expires_at) < new Date();
+                const expiresDate = new Date(marker.expires_at);
+                const isPast = expiresDate < new Date();
                 
                 let cardClass = 'my-marker-card';
                 if(isPast) cardClass += ' past';
                 if(isOffline) cardClass += ' offline';
                 
                 card.className = cardClass;
+                card.dataset.markerId = marker.id; // 添加data-id属性
 
                 const markerTypeDisplay = typeMap[marker.marker_type] || marker.marker_type;
 
@@ -362,75 +364,93 @@
                         <div class="status">
                             <span>${isOffline ? '已下线' : (isPast ? '已过期' : '在线')}</span>
                             <label class="switch">
-                                <input type="checkbox" class="status-toggle" data-id="${marker.id}" ${marker.status === 'active' ? 'checked' : ''} ${isPast ? 'disabled' : ''}>
+                                <input type="checkbox" class="status-toggle" ${marker.status === 'active' ? 'checked' : ''} ${isPast ? 'disabled' : ''}>
                                 <span class="slider round"></span>
                             </label>
                         </div>
                     </div>
                     <p>类型：${markerTypeDisplay}</p>
-                    <p>${marker.description}</p>
+                    <p>${marker.description || '没有提供详细描述。'}</p>
                     <div class="card-footer">
                         <div class="expiration-info">
                             <i class="fas fa-clock"></i> 
-                            <span>过期时间: ${new Date(marker.expires_at).toLocaleString()}</span>
+                            <span>过期时间: ${expiresDate.toLocaleString()}</span>
                         </div>
                         <div class="actions">
-                            <button class="btn btn-secondary" onclick="alert('编辑功能待实现')">编辑</button>
-                            <button class="btn btn-danger" onclick="deleteMarker(${marker.id})">删除</button>
+                            <button class="btn btn-secondary btn-edit">编辑</button>
+                            <button class="btn btn-danger btn-delete">删除</button>
                         </div>
                     </div>
                 `;
                 markersContainer.appendChild(card);
+            });
 
-                // Toggle status -- MUST be inside the loop
-                const toggle = card.querySelector('.switch input');
-                toggle.addEventListener('change', function() {
-                    const isOnline = this.checked;
-                    // Optimistic UI update
-                    card.classList.toggle('offline', !isOnline);
-                    
-                    fetch(`${API_BASE_URL}/markers/${marker.id}/status`, {
-                        method: 'PUT',
-                        headers: {
-                            'Content-Type': 'application/json',
-                            'X-User-Username': username // In a real app, use a secure token
-                        },
-                        body: JSON.stringify({ status: isOnline ? 'active' : 'inactive' })
-                    })
-                    .then(handleResponse)
-                    .then(data => {
-                        console.log('状态更新成功:', data.message);
-                        // No need to re-fetch, UI is already updated.
-                    })
-                    .catch(error => {
-                        console.error('更新失败:', error);
-                        alert(`状态更新失败: ${error.message}`);
-                        // Revert UI change on failure
-                        card.classList.toggle('offline', isOnline);
-                        this.checked = !isOnline;
-                    });
-                });
+            // 使用事件委托来处理所有卡片上的点击事件
+            markersContainer.addEventListener('click', function(event) {
+                const target = event.target;
+                const card = target.closest('.my-marker-card');
+                if (!card) return;
+
+                const markerId = card.dataset.markerId;
+
+                // 处理状态切换
+                if (target.classList.contains('status-toggle')) {
+                    toggleStatus(target, card, markerId);
+                }
+                // 处理删除按钮
+                else if (target.classList.contains('btn-delete')) {
+                    deleteMarker(markerId, card);
+                }
+                // 处理编辑按钮
+                else if (target.classList.contains('btn-edit')) {
+                    alert(`编辑功能待实现，标注ID: ${markerId}`);
+                }
             });
         }
 
-        function deleteMarker(markerId) {
+        function toggleStatus(toggleElement, cardElement, markerId) {
+            const isOnline = toggleElement.checked;
+            // 乐观UI更新
+            cardElement.classList.toggle('offline', !isOnline);
+            
+            fetch(`${API_BASE_URL}/markers/${markerId}/status`, {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-User-Username': username
+                },
+                body: JSON.stringify({ status: isOnline ? 'active' : 'inactive' })
+            })
+            .then(handleResponse)
+            .then(data => {
+                console.log('状态更新成功:', data.message);
+            })
+            .catch(error => {
+                console.error(`ID为 ${markerId} 的标注更新失败:`, error);
+                alert(`状态更新失败: ${error.message}`);
+                // 失败时回滚UI
+                cardElement.classList.toggle('offline', isOnline);
+                toggleElement.checked = !isOnline;
+            });
+        }
+
+        function deleteMarker(markerId, cardElement) {
             if (!confirm('确定要永久删除这个标注吗？此操作不可撤销。')) return;
 
             fetch(`${API_BASE_URL}/markers/${markerId}`, {
                 method: 'DELETE',
                 headers: { 
                     'Content-Type': 'application/json',
-                    'X-User-Username': username // 添加用户标识，增强安全性
+                    'X-User-Username': username
                 }
             })
             .then(handleResponse)
             .then(() => {
-                console.log('标注删除成功');
-                // 重新加载标记列表
-                fetchMarkers();
+                console.log(`ID为 ${markerId} 的标注删除成功`);
+                cardElement.remove(); // 直接从DOM中移除卡片，无需重新获取所有数据
             })
             .catch(error => {
-                console.error('删除失败:', error);
+                console.error(`删除ID为 ${markerId} 的标注失败:`, error);
                 alert(`删除失败: ${error.message}`);
             });
         }
