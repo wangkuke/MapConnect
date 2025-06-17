@@ -109,10 +109,10 @@ async function handleCreateMarker(request, env) {
 		const body = await request.json();
 
 		// 极其严格的验证
-		if (typeof body.user_id !== 'number') return new Response(JSON.stringify({ error: '无效的用户ID格式' }), { status: 400 });
+		if (typeof body.user_id !== 'number') return new Response(JSON.stringify({ error: '无效的用户ID格式 (应为数字)' }), { status: 400 });
 		if (!body.title || typeof body.title !== 'string' || body.title.trim() === '') return new Response(JSON.stringify({ error: '标题是必需的' }), { status: 400 });
 		if (!body.description || typeof body.description !== 'string' || body.description.trim() === '') return new Response(JSON.stringify({ error: '描述是必需的' }), { status: 400 });
-		if (typeof body.latitude !== 'number' || typeof body.longitude !== 'number') return new Response(JSON.stringify({ error: '无效的坐标格式' }), { status: 400 });
+		if (typeof body.latitude !== 'number' || typeof body.longitude !== 'number') return new Response(JSON.stringify({ error: '无效的坐标格式 (应为latitude和longitude)' }), { status: 400 });
 		if (!body.visibility || !['today', 'three_days'].includes(body.visibility)) return new Response(JSON.stringify({ error: '无效的可见性设置' }), { status: 400 });
 
 		// 计算过期时间
@@ -121,7 +121,7 @@ async function handleCreateMarker(request, env) {
 			? new Date(now.getTime() + 3 * 24 * 60 * 60 * 1000)
 			: new Date(now.getTime() + 1 * 24 * 60 * 60 * 1000);
 
-		// 精确的 INSERT 语句，只包含我们确认无误的字段
+		// 精确的 INSERT 语句，注意这里数据库列是 lat, lng
 		const ps = env.DB.prepare(
 			`INSERT INTO markers (user_id, title, description, lat, lng, marker_type, contact, is_private, expires_at, status)
 			 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
@@ -129,8 +129,8 @@ async function handleCreateMarker(request, env) {
 			body.user_id,
 			body.title,
 			body.description,
-			body.latitude,
-			body.longitude,
+			body.latitude, // 前端传来的是 latitude
+			body.longitude, // 前端传来的是 longitude
 			body.marker_type || 'personal',
 			body.contact || null,
 			body.is_private ? 1 : 0,
