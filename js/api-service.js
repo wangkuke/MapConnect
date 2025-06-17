@@ -10,21 +10,27 @@ const API_BASE_URL = 'https://user-api.532736720.workers.dev';
  * @param {Response} response - fetch 返回的响应对象
  * @returns {Promise<any>} - 解析后的 JSON 数据
  */
-function handleResponse(response) {
-    if (!response.ok) {
-        // 如果响应不成功，尝试解析错误信息
-        return response.json()
-            .then(err => {
-                // 如果后端返回了具体的错误信息，则抛出它
-                throw new Error(err.error || `HTTP 错误，状态码: ${response.status}`);
-            })
-            .catch(() => {
-                // 如果解析错误信息也失败了，抛出一个通用的错误
-                throw new Error(`HTTP 错误，状态码: ${response.status}`);
-            });
+async function handleResponse(response) {
+    if (response.ok) {
+        // 如果响应成功，直接解析JSON
+        // 如果响应体为空，也返回一个成功的空对象
+        const text = await response.text();
+        return text ? JSON.parse(text) : {};
     }
-    // 如果响应成功，直接解析JSON
-    return response.json();
+
+    // 如果响应不成功，获取文本内容以进行调试
+    const errorText = await response.text();
+    console.error('服务器返回的原始错误响应:', errorText);
+
+    try {
+        // 尝试将错误文本解析为JSON
+        const err = JSON.parse(errorText);
+        // 抛出后端提供的具体错误信息
+        throw new Error(err.error || `HTTP 错误，状态码: ${response.status}`);
+    } catch (e) {
+        // 如果JSON解析失败，或者不是我们预期的错误格式，抛出一个包含原始文本的更通用的错误
+        throw new Error(`服务器返回了无效的响应: ${response.status}. 详情: ${errorText}`);
+    }
 }
 
 /**
