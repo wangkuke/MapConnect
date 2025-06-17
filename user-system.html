@@ -598,8 +598,8 @@
                 }
                 return response.json();
             })
-            .then(user => {
-                sessionStorage.setItem('mapconnect_currentUser', JSON.stringify(user));
+            .then(data => {
+                sessionStorage.setItem('mapconnect_currentUser', JSON.stringify(data.user));
                 alert('登录成功！即将返回地图页面。');
                 window.location.href = 'index.html';
             })
