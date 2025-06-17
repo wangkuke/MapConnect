@@ -1,0 +1,421 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MapConnect - 我的标注</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <style>
+        :root {
+            --primary: #4361ee;
+            --secondary: #3f37c9;
+            --accent: #4895ef;
+            --success: #4cc9f0;
+            --danger: #f72585;
+            --light: #f8f9fa;
+            --dark: #212529;
+            --text: #343a40;
+            --card-bg: rgba(255, 255, 255, 0.9);
+            --glass-bg: rgba(255, 255, 255, 0.25);
+            --glass-border: rgba(255, 255, 255, 0.18);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        body {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: var(--text);
+            min-height: 100vh;
+        }
+
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        .panel {
+            background: var(--glass-bg);
+            backdrop-filter: blur(12px);
+            border-radius: 20px;
+            padding: 25px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+            border: 1px solid var(--glass-border);
+        }
+
+        .panel-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 30px;
+        }
+
+        .panel-title {
+            font-size: 1.8rem;
+            font-weight: 700;
+            background: linear-gradient(to right, var(--primary), var(--success));
+            -webkit-background-clip: text;
+            background-clip: text;
+            color: transparent;
+            display: flex;
+            align-items: center;
+        }
+
+        .panel-title i {
+            margin-right: 15px;
+            font-size: 2rem;
+            color: var(--primary);
+        }
+
+        .back-btn {
+            background: var(--card-bg);
+            border: none;
+            padding: 10px 20px;
+            border-radius: 50px;
+            display: flex;
+            align-items: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-weight: 600;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.05);
+            font-size: 0.9rem;
+        }
+
+        .back-btn i {
+            margin-right: 8px;
+        }
+
+        .back-btn:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 6px 20px rgba(0, 0, 0, 0.1);
+        }
+
+        .my-marker-card {
+            background: var(--card-bg);
+            border-radius: 15px;
+            padding: 20px;
+            margin-bottom: 20px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+            transition: all 0.3s ease;
+            border-left: 5px solid var(--primary);
+        }
+
+        .my-marker-card.offline {
+            border-left-color: #6c757d;
+            opacity: 0.7;
+        }
+        
+        .my-marker-card.past {
+            border-left-color: #ced4da;
+            background: rgba(255, 255, 255, 0.6);
+        }
+
+        .card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+
+        .card-header h3 {
+            font-size: 1.2rem;
+            display: flex;
+            align-items: center;
+        }
+
+        .card-header h3 i {
+            margin-right: 10px;
+            color: var(--primary);
+        }
+        
+        .my-marker-card.offline h3 i {
+            color: #6c757d;
+        }
+
+        .status {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 0.9rem;
+            font-weight: 600;
+        }
+        
+        .my-marker-card.offline .status span {
+            color: #6c757d;
+        }
+        
+        .my-marker-card.past .status span {
+            color: var(--dark);
+        }
+
+        .my-marker-card > p {
+            font-size: 0.95rem;
+            color: #495057;
+            margin-bottom: 20px;
+            line-height: 1.6;
+        }
+
+        .card-footer {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .expiration-info {
+            display: flex;
+            align-items: center;
+            font-size: 0.9rem;
+            color: var(--secondary);
+        }
+
+        .expiration-info i {
+            margin-right: 8px;
+        }
+
+        .actions {
+            display: flex;
+            gap: 10px;
+        }
+
+        .btn {
+            border: none;
+            padding: 8px 15px;
+            border-radius: 50px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .btn-primary {
+            background: var(--primary);
+            color: white;
+        }
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 15px rgba(67, 97, 238, 0.3);
+        }
+
+        .btn-secondary {
+            background: #e9ecef;
+            color: var(--text);
+        }
+        .btn-secondary:hover {
+             background: #dee2e6;
+        }
+        
+        .btn-danger {
+            background: var(--danger);
+            color: white;
+        }
+        .btn-danger:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 15px rgba(247, 37, 133, 0.3);
+        }
+
+        /* Toggle Switch */
+        .switch {
+            position: relative;
+            display: inline-block;
+            width: 50px;
+            height: 28px;
+        }
+
+        .switch input { 
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+
+        .slider {
+            position: absolute;
+            cursor: pointer;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: #ccc;
+            transition: .4s;
+            border-radius: 34px;
+        }
+
+        .slider:before {
+            position: absolute;
+            content: "";
+            height: 20px;
+            width: 20px;
+            left: 4px;
+            bottom: 4px;
+            background-color: white;
+            transition: .4s;
+            border-radius: 50%;
+        }
+
+        input:checked + .slider {
+            background-color: var(--primary);
+        }
+
+        input:checked + .slider:before {
+            transform: translateX(22px);
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="panel">
+            <div class="panel-header">
+                <div class="panel-title">
+                    <i class="fas fa-list-alt"></i> 我的标注
+                </div>
+                <button class="back-btn" onclick="window.location.href='index.html'">
+                    <i class="fas fa-arrow-left"></i> 返回主页
+                </button>
+            </div>
+
+            <div class="markers-list">
+                <!-- Dynamically inserted markers will go here -->
+            </div>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const currentUser = JSON.parse(sessionStorage.getItem('mapconnect_currentUser'));
+            if (!currentUser) {
+                alert('请先登录以查看您的标注。');
+                window.location.href = 'user-system.html';
+                return;
+            }
+            initializeApp(currentUser);
+        });
+
+        function initializeApp(currentUser) {
+            const markersContainer = document.getElementById('my-markers-list');
+            const username = currentUser.username;
+            const typeMap = {
+                personal: '个人',
+                business: '企业',
+                official: '官方',
+                charity: '公益'
+            };
+
+            const fetchMarkers = () => {
+                fetch(`http://localhost:5000/api/markers/${username}`, {
+                    headers: { 'X-User-Username': username }
+                })
+                .then(response => {
+                    if (response.status === 401 || response.status === 403) {
+                         alert('身份验证失败，请重新登录。');
+                         sessionStorage.removeItem('mapconnect_currentUser');
+                         window.location.href = 'user-system.html';
+                         return Promise.reject('Authentication failed');
+                    }
+                    if (!response.ok) {
+                        throw new Error('网络响应错误');
+                    }
+                    return response.json();
+                })
+                .then(markers => {
+                    renderMarkers(markers);
+                })
+                .catch(error => {
+                    console.error('获取标注失败:', error);
+                    if (error !== 'Authentication failed') {
+                       markersContainer.innerHTML = '<p>加载您的标注时出错，请稍后再试。</p>';
+                    }
+                });
+            };
+            
+            const renderMarkers = (markers) => {
+                markersContainer.innerHTML = '';
+                if (markers.length === 0) {
+                    markersContainer.innerHTML = '<p>您还没有创建任何标注。 <a href="marker-editor.html">去创建一个！</a></p>';
+                    return;
+                }
+                markers.forEach(marker => {
+                    const card = document.createElement('div');
+                    const isOffline = marker.status !== 'active';
+                    const isPast = new Date(marker.expires_at) < new Date();
+                    
+                    let cardClass = 'my-marker-card';
+                    if(isPast) cardClass += ' past';
+                    if(isOffline) cardClass += ' offline';
+                    
+                    card.className = cardClass;
+
+                    const markerTypeDisplay = typeMap[marker.marker_type] || marker.marker_type;
+
+                    card.innerHTML = `
+                        <div class="card-header">
+                            <h3><i class="fas fa-map-pin"></i> ${marker.title}</h3>
+                            <div class="status">
+                                <span>${isOffline ? '已下线' : (isPast ? '已过期' : '在线')}</span>
+                                <label class="switch">
+                                    <input type="checkbox" class="status-toggle" data-id="${marker.id}" ${marker.status === 'active' ? 'checked' : ''} ${isPast ? 'disabled' : ''}>
+                                    <span class="slider round"></span>
+                                </label>
+                            </div>
+                        </div>
+                        <p>类型：${markerTypeDisplay}</p>
+                        <p>${marker.description}</p>
+                        <div class="card-footer">
+                            <div class="expiration-info">
+                                <i class="fas fa-clock"></i> 
+                                <span>过期时间: ${new Date(marker.expires_at).toLocaleString()}</span>
+                            </div>
+                            <div class="actions">
+                                <button class="btn btn-secondary" onclick="alert('编辑功能待实现')">编辑</button>
+                            </div>
+                        </div>
+                    `;
+                    markersContainer.appendChild(card);
+                });
+            };
+            
+            markersContainer.addEventListener('change', (e) => {
+                if (e.target.classList.contains('status-toggle')) {
+                    const markerId = e.target.dataset.id;
+                    const newStatus = e.target.checked ? 'active' : 'inactive';
+                    updateMarkerStatus(markerId, newStatus);
+                }
+            });
+
+            const updateMarkerStatus = (markerId, status) => {
+                fetch(`http://localhost:5000/api/markers/${markerId}/status`, {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-User-Username': username
+                    },
+                    body: JSON.stringify({ status })
+                })
+                .then(response => {
+                    if (!response.ok) {
+                        // If update fails, revert the toggle and alert user
+                        throw new Error('状态更新失败');
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    console.log('状态更新成功:', data.message);
+                    // Optionally, you can give a more visual feedback
+                    fetchMarkers(); // Re-fetch to show the latest state
+                })
+                .catch(error => {
+                    console.error('更新失败:', error);
+                    alert(error.message);
+                    // Re-fetch to revert the visual state of the toggle
+                    fetchMarkers();
+                });
+            };
+
+            fetchMarkers();
+        }
+    </script>
+</body>
+</html> 
