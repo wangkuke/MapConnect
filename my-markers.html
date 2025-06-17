@@ -294,7 +294,14 @@
                 return;
             }
 
+            // 初始化加载标记
+            fetchMarkers();
+        });
+
+        // 添加fetchMarkers函数用于加载标记
+        function fetchMarkers() {
             const markersContainer = document.getElementById('markers-container');
+            markersContainer.innerHTML = '<p>正在加载您的标注...</p>';
 
             // Fetch user's markers
             fetch(`${API_BASE_URL}/markers/${username}`, {
@@ -308,14 +315,16 @@
             .catch(error => {
                 console.error('获取标注失败:', error);
                 if (markersContainer) {
-                   markersContainer.innerHTML = '<p>加载您的标注时出错，请稍后再试。</p>';
+                    markersContainer.innerHTML = '<p>加载您的标注时出错，请稍后再试。</p>';
                 }
             });
-        });
+        }
 
         function handleResponse(response) {
             if (!response.ok) {
-                return response.json().then(err => { throw new Error(err.error || `HTTP error! status: ${response.status}`) });
+                return response.json()
+                    .then(err => { throw new Error(err.error || `HTTP error! status: ${response.status}`) })
+                    .catch(() => { throw new Error(`HTTP error! status: ${response.status}`) });
             }
             return response.json();
         }
@@ -409,16 +418,20 @@
 
             fetch(`${API_BASE_URL}/markers/${markerId}`, {
                 method: 'DELETE',
-                headers: { 'Content-Type': 'application/json' }
+                headers: { 
+                    'Content-Type': 'application/json',
+                    'X-User-Username': username // 添加用户标识，增强安全性
+                }
             })
             .then(handleResponse)
             .then(() => {
                 console.log('标注删除成功');
+                // 重新加载标记列表
                 fetchMarkers();
             })
             .catch(error => {
                 console.error('删除失败:', error);
-                alert(error.message);
+                alert(`删除失败: ${error.message}`);
             });
         }
     </script>
