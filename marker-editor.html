@@ -664,8 +664,11 @@
                 // 更新初始位置显示
                 updatePositionDisplay();
                 
-                // 绑定提交按钮事件
-                document.getElementById('create-marker-btn').addEventListener('click', submitMarker);
+                // 绑定表单提交事件
+                document.getElementById('marker-form').addEventListener('submit', (e) => {
+                    e.preventDefault();
+                    submitMarker();
+                });
             }
             
             // 当用户点击创建标注按钮时
@@ -686,7 +689,7 @@
                 const description = document.getElementById('marker-description').value;
                 const markerType = document.getElementById('marker-type').value;
                 const contact = document.getElementById('marker-contact').value;
-                const isPrivate = document.getElementById('is-private').checked;
+                const visibility = document.getElementById('marker-visibility').value;
                 
                 // 验证必填项
                 if (!title || !currentLatLng) {
@@ -703,7 +706,8 @@
                     longitude: currentLatLng.lng, // 使用longitude而不是lng
                     marker_type: markerType,
                     contact: contact,
-                    is_private: isPrivate
+                    is_private: false, // 假设所有标记都是公开的，因为UI上没有这个选项
+                    visibility: visibility // 添加visibility字段
                 };
                 
                 console.log('发送标注数据:', markerData);
