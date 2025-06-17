@@ -1,8 +1,0 @@
-name = "user-api"
-main = "src/index.js"
-compatibility_date = "2024-06-17"
-
-[[d1_databases]]
-binding = "DB" # 这是我们在代码中引用数据库时使用的名字
-database_name = "users-db"
-database_id = "a42334b8-9c7a-4b71-aa32-9e99aeefe290" 
