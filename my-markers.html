@@ -320,6 +320,13 @@
             return response.json();
         }
 
+        const typeMap = {
+            personal: '个人',
+            business: '企业',
+            official: '官方',
+            charity: '公益'
+        };
+
         function renderMarkers(markers) {
             const markersContainer = document.getElementById('markers-container');
             markersContainer.innerHTML = '';
