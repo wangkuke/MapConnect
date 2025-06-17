@@ -221,48 +221,16 @@ async function handleLogin(request, env) {
  */
 async function handleGetMarkers(request, env) {
 	try {
-		// 这里我们返回一些示例数据
-		// 在实际应用中，您需要从数据库中查询这些数据
-		const sampleMarkers = [
-			{
-				id: 1,
-				lat: 39.9042,
-				lng: 116.4074,
-				title: "北京市",
-				description: "中国首都",
-				type: "city",
-				marker_type: "official",
-				user_name: "系统管理员",
-				user_username: "admin",
-				contact: "admin@example.com"
-			},
-			{
-				id: 2,
-				lat: 31.2304,
-				lng: 121.4737,
-				title: "上海市",
-				description: "中国经济中心",
-				type: "city",
-				marker_type: "business",
-				user_name: "系统管理员",
-				user_username: "admin",
-				contact: "admin@example.com"
-			},
-			{
-				id: 3,
-				lat: 22.5431,
-				lng: 114.0579,
-				title: "深圳市",
-				description: "中国科技创新中心",
-				type: "city",
-				marker_type: "personal",
-				user_name: "系统管理员",
-				user_username: "admin",
-				contact: "admin@example.com"
-			}
-		];
-
-		return new Response(JSON.stringify(sampleMarkers), {
+		// 从数据库中查询所有公开和有效的标注
+		const ps = env.DB.prepare(
+			`SELECT m.*, u.username as user_username, u.name as user_name 
+			 FROM markers m 
+			 JOIN users u ON m.user_id = u.id 
+			 WHERE m.status = 'active'`
+		);
+		const { results } = await ps.all();
+		
+		return new Response(JSON.stringify(results), {
 			status: 200,
 			headers: { 'Content-Type': 'application/json' }
 		});
@@ -300,12 +268,12 @@ async function handleCreateMarker(request, env) {
 
     try {
         const ps = env.DB.prepare(
-            `INSERT INTO markers (user_id, title, description, lat, lng, type, marker_type, start_time, end_time, contact, cost, is_private)
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+            `INSERT INTO markers (user_id, title, description, lat, lng, type, marker_type, start_time, end_time, contact, cost, is_private, status)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
         ).bind(
             user_id, title, description || null, lat, lng, type || null, 
             marker_type || 'personal', start_time || null, end_time || null, 
-            contact || null, cost || null, is_private ? 1 : 0
+            contact || null, cost || null, is_private ? 1 : 0, 'active'
         );
         
         await ps.run();
