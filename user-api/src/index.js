@@ -294,7 +294,7 @@ async function handleCreateMarker(request, env) {
 
     const {
         user_id, title, description, lat, lng, latitude, longitude, type,
-        marker_type, start_time, end_time, contact, cost, is_private
+        marker_type, start_time, end_time, contact, cost, is_private, visibility
     } = markerData;
 
     // 支持两种参数格式：lat/lng 或 latitude/longitude
@@ -310,14 +310,23 @@ async function handleCreateMarker(request, env) {
         });
     }
 
+    // 根据visibility计算expires_at
+    const now = new Date();
+    let expires_at;
+    if (visibility === 'three_days') {
+        expires_at = new Date(now.getTime() + 3 * 24 * 60 * 60 * 1000);
+    } else { // 默认为 'today'
+        expires_at = new Date(now.getTime() + 1 * 24 * 60 * 60 * 1000);
+    }
+
     try {
         const ps = env.DB.prepare(
-            `INSERT INTO markers (user_id, title, description, lat, lng, type, marker_type, start_time, end_time, contact, cost, is_private, status)
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+            `INSERT INTO markers (user_id, title, description, lat, lng, type, marker_type, start_time, end_time, contact, cost, is_private, status, expires_at)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
         ).bind(
             user_id, title, description || null, finalLat, finalLng, type || null,
             marker_type || 'personal', start_time || null, end_time || null,
-            contact || null, cost || null, is_private ? 1 : 0, 'active'
+            contact || null, cost || null, is_private ? 1 : 0, 'active', expires_at.toISOString()
         );
 
         await ps.run();
@@ -334,7 +343,8 @@ async function handleCreateMarker(request, env) {
                 type,
                 marker_type: marker_type || 'personal',
                 contact: contact || null,
-                is_private: is_private ? 1 : 0
+                is_private: is_private ? 1 : 0,
+                expires_at: expires_at.toISOString()
             }
         }), { 
             status: 201,
@@ -366,9 +376,21 @@ async function handleGetUserMarkers(request, env, username) {
              FROM markers m
              JOIN users u ON m.user_id = u.id
              WHERE u.username = ?`
-        ).bind(username);
+        );
         const { results } = await ps.all();
-        return new Response(JSON.stringify(results), {
+        
+        // 为每个标记添加一个默认的过期时间（如果它不存在）
+        // 这是一个临时修复，理想情况下，应该在创建标记时就设置好它
+        const markersWithExpiry = results.map(marker => {
+            if (!marker.expires_at) {
+                const createdAt = new Date(marker.created_at || Date.now());
+                // 默认设置为创建后的3天过期
+                marker.expires_at = new Date(createdAt.getTime() + 3 * 24 * 60 * 60 * 1000).toISOString();
+            }
+            return marker;
+        });
+
+        return new Response(JSON.stringify(markersWithExpiry), {
             status: 200,
             headers: { 'Content-Type': 'application/json' },
         });
