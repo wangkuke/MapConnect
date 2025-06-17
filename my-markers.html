@@ -313,6 +313,13 @@
             });
         });
 
+        function handleResponse(response) {
+            if (!response.ok) {
+                return response.json().then(err => { throw new Error(err.error || `HTTP error! status: ${response.status}`) });
+            }
+            return response.json();
+        }
+
         function renderMarkers(markers) {
             const markersContainer = document.getElementById('markers-container');
             markersContainer.innerHTML = '';
