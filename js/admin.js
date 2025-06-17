@@ -30,8 +30,12 @@ const App = {
     },
 
     fetchStats() {
-        fetch('http://localhost:5000/api/admin/stats', {
-            headers: { 'X-Admin-Username': this.state.currentAdmin.username }
+        fetch('https://user-api.532736720.workers.dev/admin/stats', {
+            method: 'GET',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${this.state.currentAdmin.token}`
+            }
         })
         .then(res => res.json())
         .then(stats => {
@@ -42,8 +46,12 @@ const App = {
     },
     
     fetchMarkers() {
-        fetch('http://localhost:5000/api/admin/all-markers', {
-            headers: { 'X-Admin-Username': this.state.currentAdmin.username }
+        fetch('https://user-api.532736720.workers.dev/admin/all-markers', {
+            method: 'GET',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${this.state.currentAdmin.token}`
+            }
         })
         .then(res => res.json())
         .then(markers => {
@@ -148,7 +156,7 @@ const App = {
             const username = document.getElementById('admin-username').value;
             const password = document.getElementById('admin-password').value;
             
-            fetch('http://localhost:5000/api/login', {
+            fetch('https://user-api.532736720.workers.dev/login', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ username, password })
@@ -189,9 +197,12 @@ const App = {
     },
     
     deleteMarker(markerId) {
-        fetch(`http://localhost:5000/api/admin/markers/${markerId}`, {
+        fetch(`https://user-api.532736720.workers.dev/admin/markers/${markerId}`, {
             method: 'DELETE',
-            headers: { 'X-Admin-Username': this.state.currentAdmin.username }
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${this.state.currentAdmin.token}`
+            }
         })
         .then(res => {
             if (!res.ok) throw new Error('删除失败');
