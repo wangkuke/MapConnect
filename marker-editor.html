@@ -683,7 +683,12 @@
                 }
                 
                 // 获取用户ID
-                const userId = currentUser.user ? currentUser.user.id : currentUser.id;
+                const userIdStr = currentUser.user ? currentUser.user.id : currentUser.id;
+                if (!userIdStr) {
+                    alert('无法获取用户ID，请重新登录。');
+                    return;
+                }
+                const userId = parseInt(userIdStr, 10);
                 
                 // 获取表单数据
                 const title = document.getElementById('marker-title').value;
@@ -711,12 +716,12 @@
                     user_id: userId,
                     title: title,
                     description: description,
-                    latitude: currentLatLng.lat,  // 使用latitude而不是lat
-                    longitude: currentLatLng.lng, // 使用longitude而不是lng
+                    latitude: currentLatLng.lat,
+                    longitude: currentLatLng.lng,
                     marker_type: markerType,
                     contact: contact,
                     is_private: false, // 假设所有标记都是公开的，因为UI上没有这个选项
-                    visibility: visibility // 添加visibility字段
+                    visibility: visibility
                 };
                 
                 console.log('发送标注数据:', markerData);
