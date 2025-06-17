@@ -286,16 +286,28 @@ async function handleCreateMarker(request, env) {
     try {
         markerData = await request.json();
     } catch (e) {
-        return new Response(JSON.stringify({ error: '无效的JSON格式' }), { status: 400 });
+        return new Response(JSON.stringify({ error: '无效的JSON格式' }), { 
+            status: 400,
+            headers: { 'Content-Type': 'application/json' } 
+        });
     }
 
     const {
-        user_id, title, description, lat, lng, type,
+        user_id, title, description, lat, lng, latitude, longitude, type,
         marker_type, start_time, end_time, contact, cost, is_private
     } = markerData;
 
-    if (!user_id || !title || lat === undefined || lng === undefined) {
-        return new Response(JSON.stringify({ error: '缺少必需字段: user_id, title, lat, lng' }), { status: 400 });
+    // 支持两种参数格式：lat/lng 或 latitude/longitude
+    const finalLat = latitude !== undefined ? latitude : lat;
+    const finalLng = longitude !== undefined ? longitude : lng;
+
+    if (!user_id || !title || (finalLat === undefined || finalLng === undefined)) {
+        return new Response(JSON.stringify({ 
+            error: '缺少必需字段: user_id, title, 以及坐标信息(latitude/longitude 或 lat/lng)' 
+        }), { 
+            status: 400,
+            headers: { 'Content-Type': 'application/json' } 
+        });
     }
 
     try {
@@ -303,17 +315,37 @@ async function handleCreateMarker(request, env) {
             `INSERT INTO markers (user_id, title, description, lat, lng, type, marker_type, start_time, end_time, contact, cost, is_private, status)
              VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
         ).bind(
-            user_id, title, description || null, lat, lng, type || null,
+            user_id, title, description || null, finalLat, finalLng, type || null,
             marker_type || 'personal', start_time || null, end_time || null,
             contact || null, cost || null, is_private ? 1 : 0, 'active'
         );
 
         await ps.run();
 
-        return new Response(JSON.stringify({ message: '标注创建成功' }), { status: 201 });
+        return new Response(JSON.stringify({ 
+            message: '标注创建成功',
+            status: 'success',
+            marker: {
+                user_id,
+                title,
+                description,
+                lat: finalLat,
+                lng: finalLng,
+                type,
+                marker_type: marker_type || 'personal',
+                contact: contact || null,
+                is_private: is_private ? 1 : 0
+            }
+        }), { 
+            status: 201,
+            headers: { 'Content-Type': 'application/json' }
+        });
     } catch (e) {
         console.error('创建标注时发生错误:', e);
-        return new Response(JSON.stringify({ error: '发生内部服务器错误' }), { status: 500 });
+        return new Response(JSON.stringify({ error: '发生内部服务器错误', details: e.message }), { 
+            status: 500,
+            headers: { 'Content-Type': 'application/json' }
+        });
     }
 }
 
