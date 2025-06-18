@@ -287,14 +287,20 @@
     <script>
         document.addEventListener('DOMContentLoaded', function() {
             const currentUser = JSON.parse(sessionStorage.getItem('mapconnect_currentUser'));
-            if (!currentUser || !currentUser.username) {
-                document.body.innerHTML = '<h1>请先登录</h1><p><a href="user-system.html">点击这里登录</a></p>';
-                return;
+            
+            // 只有当用户真的登录了，才去获取标注
+            if (currentUser && currentUser.username) {
+                fetchMarkers(currentUser.username);
+            } else {
+                // 如果未登录，则显示一个提示信息
+                const markersContainer = document.getElementById('markers-container');
+                if (markersContainer) {
+                    markersContainer.innerHTML = '<p style="text-align: center; padding: 20px;">请<a href="user-system.html">登录</a>以查看您的标注。</p>';
+                }
             }
-            fetchMarkers(currentUser.username);
         });
 
-        function fetchMarkers(username) {
+        async function fetchMarkers(username) {
             const markersContainer = document.getElementById('markers-container');
             markersContainer.innerHTML = '<p>正在加载您的标注...</p>';
             
