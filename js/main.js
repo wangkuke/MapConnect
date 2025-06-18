@@ -113,15 +113,26 @@ function showUserProfileModal(username) {
             // ... (渲染用户资料 modal 的 HTML) ...
             const joinedDate = new Date(user.created_at).toLocaleDateString('zh-CN', { year: 'numeric', month: 'long', day: 'numeric' });
             const avatarContent = user.avatar_url ? '' : (user.name || user.username).charAt(0).toUpperCase();
-            const avatarStyle = user.avatar_url ? `background-image: url(${user.avatar_url.startsWith('http') ? user.avatar_url : apiService.API_BASE_URL + user.avatar_url});` : '';
+            const avatarStyle = user.avatar_url ? `background-image: url(${user.avatar_url.startsWith('http') ? user.avatar_url : API_BASE_URL + user.avatar_url});` : '';
             const displayName = user.name || user.username;
-            // ... gender, age etc.
+            
+            // 准备要显示的新字段
+            const genderMap = { 'male': '男', 'female': '女', 'secret': '保密' };
+            const genderDisplay = user.gender ? `<div class="detail-item"><i class="fas fa-venus-mars"></i> ${genderMap[user.gender] || '未知'}</div>` : '';
+            const ageDisplay = user.age ? `<div class="detail-item"><i class="fas fa-birthday-cake"></i> ${user.age} 岁</div>` : '';
+            const bioDisplay = user.bio ? `<p class="bio">${user.bio}</p>` : '<p class="bio">这位用户很神秘，什么也没留下...</p>';
+
             modal.innerHTML = `
                 <button class="profile-modal-close-btn" onclick="closeUserProfileModal()">&times;</button>
                 <div class="profile-modal-content">
                     <div class="avatar" style="${avatarStyle}">${avatarContent}</div>
                     <h2 class="name">${displayName}</h2>
-                    <p class="joined-date">于 ${joinedDate} 加入</p>
+                    <div class="user-details">
+                        ${genderDisplay}
+                        ${ageDisplay}
+                    </div>
+                    ${bioDisplay}
+                    <p class="joined-date"><i class="fas fa-clock"></i> 于 ${joinedDate} 加入</p>
                 </div>
             `;
         })
