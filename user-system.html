@@ -724,14 +724,14 @@
         function initializeGoogleSignIn() {
             try {
                 google.accounts.id.initialize({
-                    client_id: '148741481582-74s7at5usheng5atgrnpgq3p3bnamoj2.apps.googleusercontent.com', // <-- 请务必替换成您自己的 Google Client ID
+                    client_id: '148741481582-74s7at5usheng5atgrn_pgq3p3bnamoj2.apps.googleusercontent.com',
                     callback: handleGoogleResponse
                 });
                 google.accounts.id.renderButton(
                     document.querySelector('.social-btn.google'),
-                    { theme: 'outline', size: 'large', type: 'icon', shape: 'circle' } 
+                    { theme: 'filled_blue', size: 'large', type: 'icon', shape: 'circle' } 
                 );
-                google.accounts.id.prompt(); //
+                google.accounts.id.prompt();
             } catch (e) {
                 console.error("Google Sign-In initialization failed:", e);
                 // Fallback for the button if initialization fails
