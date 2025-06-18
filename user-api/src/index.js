@@ -182,7 +182,7 @@ router.post('/markers', handleCreateMarker);
 router.get('/markers/:username', handleGetUserMarkers);
 router.put('/markers/:id/status', handleUpdateMarkerStatus);
 router.delete('/markers/:id', handleDeleteMarker);
-router.all('*', () => new Response('Not Found', { status: 404 }));
+router.all('.*', () => new Response('Not Found', { status: 404 }));
 
 export default {
 	async fetch(request, env, ctx) {
