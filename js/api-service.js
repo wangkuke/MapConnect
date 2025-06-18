@@ -3,7 +3,11 @@
  * 负责与后端API的所有通信
  */
 
-const API_BASE_URL = 'https://user-api.532736720.workers.dev';
+// 原 Cloudflare Workers 地址
+// const API_BASE_URL = 'https://user-api.532736720.workers.dev';
+
+// 新的自定义域名 API 地址
+const API_BASE_URL = 'https://api.9696mm.club';
 
 /**
  * 处理 API 响应的通用函数
@@ -126,28 +130,4 @@ const apiService = {
      * 删除一个标注
      * @param {string|number} markerId - 标注ID
      */
-    deleteMarker: (markerId) => apiFetch(`/markers/${markerId}`, {
-        method: 'DELETE',
-    }),
-    
-    /**
-     * 获取用户公开资料
-     * @param {string} username - 用户名
-     */
-    getUserProfile: (username) => apiFetch(`/users/${username}`),
-    
-    /**
-     * 更新用户资料 (需要改进为 FormData)
-     * @param {string} username 
-     * @param {object} profileData 
-     */
-    updateUserProfile: (username, profileData) => apiFetch(`/users/${username}`, {
-        method: 'PUT',
-        body: JSON.stringify(profileData)
-    })
-};
-
-// 如果是在浏览器环境中，可以将 apiService 暴露到全局作用域
-if (typeof window !== 'undefined') {
-    window.apiService = apiService;
-} 
+    deleteMarker: (markerId) => apiFetch(`
