@@ -590,6 +590,7 @@
             fetch(`${API_BASE_URL}/login`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
+                credentials: 'include',
                 body: JSON.stringify({ username: identifier, password: password })
             })
             .then(async response => {
@@ -619,6 +620,7 @@
             fetch(`${API_BASE_URL}/register`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
+                credentials: 'include',
                 body: JSON.stringify({ username, email, password })
             })
             .then(async response => {
@@ -656,6 +658,7 @@
             fetch(`${API_BASE_URL}/profile`, {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
+                credentials: 'include',
                 body: JSON.stringify({
                     username: currentUser.username, // for identification
                     ...payload 
@@ -706,6 +709,7 @@
                 headers: {
                     'Content-Type': 'application/json',
                 },
+                credentials: 'include',
                 body: JSON.stringify({ credential }),
             })
             .then(async res => {
@@ -774,6 +778,7 @@
                     // 传递用户名用于身份识别，代替Token认证（临时方案）
                     'X-User-Username': currentUser.username
                 },
+                credentials: 'include',
                 body: formData
             })
             .then(async response => {
