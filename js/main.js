@@ -67,9 +67,9 @@ function displayMarkers(markers) {
             <h3><i class="fas ${popupIconClass}"></i> ${marker.title}</h3>
             <p>${marker.description}</p>
             <div class="marker-footer">
-                <a href="#" onclick="event.preventDefault(); showUserProfileModal('${marker.user_username}')" title="查看 ${marker.user_name || marker.user_username} 的资料">
+                <div class="marker-user" title="创建者: ${marker.user_name || marker.user_username}">
                     <span>${(marker.user_name || marker.user_username).charAt(0).toUpperCase()}</span>
-                </a>
+                </div>
                 <button class="contact-btn" onclick="alert('联系方式: ${marker.contact || '未提供'}')">联系</button>
             </div>
         `;
@@ -116,9 +116,16 @@ function showUserProfileModal(username) {
             const avatarStyle = user.avatar_url ? `background-image: url(${user.avatar_url.startsWith('http') ? user.avatar_url : API_BASE_URL + user.avatar_url});` : '';
             const displayName = user.name || user.username;
             
-            // 准备要显示的新字段
+            // 准备要显示的新字段，并修正性别图标
             const genderMap = { 'male': '男', 'female': '女', 'secret': '保密' };
-            const genderDisplay = user.gender ? `<div class="detail-item"><i class="fas fa-venus-mars"></i> ${genderMap[user.gender] || '未知'}</div>` : '';
+            const genderIconMap = { 'male': 'fa-mars', 'female': 'fa-venus', 'secret': 'fa-question-circle' };
+            
+            let genderDisplay = '';
+            if (user.gender && genderMap[user.gender]) {
+                const iconClass = genderIconMap[user.gender] || 'fa-venus-mars';
+                genderDisplay = `<div class="detail-item"><i class="fas ${iconClass}"></i> ${genderMap[user.gender]}</div>`;
+            }
+
             const ageDisplay = user.age ? `<div class="detail-item"><i class="fas fa-birthday-cake"></i> ${user.age} 岁</div>` : '';
             const bioDisplay = user.bio ? `<p class="bio">${user.bio}</p>` : '<p class="bio">这位用户很神秘，什么也没留下...</p>';
 
