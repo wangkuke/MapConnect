@@ -49,7 +49,11 @@ const corsHeaders = {
 function addCorsHeaders(response) {
 	const headers = new Headers(response.headers);
 	Object.entries(corsHeaders).forEach(([key, value]) => headers.set(key, value));
-	return new Response(response.body, { ...response, headers });
+	return new Response(response.body, {
+		status: response.status,
+		statusText: response.statusText,
+		headers: headers
+	});
 }
 
 function handleOptions() {
