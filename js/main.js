@@ -107,6 +107,11 @@ function loadMarkers() {
 
 // --- 用户界面和服务 ---
 
+// 原 Cloudflare Workers 地址
+// const API_BASE_URL = 'https://user-api.532736720.workers.dev';
+// 新的自定义域名 API 地址
+const API_BASE_URL = 'https://api.9696mm.club';
+
 function showUserProfileModal(username) {
     const modal = document.getElementById('profile-modal');
     const modalOverlay = document.getElementById('profile-modal-overlay');
@@ -184,7 +189,6 @@ function updateUserUI() {
         if (user.avatar_url) {
             let avatarUrl = user.avatar_url;
             // 如果URL不是完整的，就拼接API基地址
-            const API_BASE_URL = 'https://user-api.532736720.workers.dev';
             if (!avatarUrl.startsWith('http')) {
                 avatarUrl = `${API_BASE_URL}${avatarUrl}`;
             }
