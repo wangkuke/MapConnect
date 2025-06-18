@@ -159,28 +159,44 @@ function updateUserUI() {
     const userStatusEl = document.getElementById('user-status');
 
     if (currentUser) {
+        // --- 已登录状态 ---
         const user = currentUser.user || currentUser;
-        userNameEl.textContent = `${user.name || user.username}`;
-        // ... (设置头像)
+        userNameEl.textContent = user.name || user.username;
         userStatusEl.textContent = '欢迎回来！';
-        const logoutLink = document.createElement('a');
-        logoutLink.href = '#';
-        logoutLink.textContent = '退出登录';
-        logoutLink.onclick = (e) => {
-            e.preventDefault();
-            sessionStorage.removeItem('mapconnect_currentUser');
-            window.location.reload();
-        };
-        userStatusEl.appendChild(logoutLink);
+
+        // 更新头像
+        userAvatar.innerHTML = ''; // 清空 'Hi' 或首字母
+        if (user.avatar_url) {
+            let avatarUrl = user.avatar_url;
+            // 如果URL不是完整的，就拼接API基地址
+            const API_BASE_URL = 'https://user-api.532736720.workers.dev';
+            if (!avatarUrl.startsWith('http')) {
+                avatarUrl = `${API_BASE_URL}${avatarUrl}`;
+            }
+            userAvatar.style.backgroundImage = `url(${avatarUrl})`;
+            userAvatar.style.backgroundSize = 'cover';
+            userAvatar.style.backgroundPosition = 'center';
+        } else {
+            userAvatar.style.backgroundImage = ''; // 移除可能存在的背景图片
+            userAvatar.textContent = (user.name || user.username).charAt(0).toUpperCase();
+        }
+
+        // 点击用户区域跳转到个人资料设置
         userArea.onclick = () => window.location.href = 'user-system.html#profile';
+        
+        // (可选) 如果需要登出功能可以直接在这里添加，或者在个人设置页处理
+        // 例如：userStatusEl.innerHTML = '欢迎回来！<a href="#" id="logout-link">退出</a>';
+        // document.getElementById('logout-link').onclick = ...
+
     } else {
+        // --- 未登录状态 ---
+        userAvatar.style.backgroundImage = ''; // 确保没有背景图片
         userAvatar.textContent = 'Hi';
         userNameEl.textContent = '登录 / 注册';
         userStatusEl.textContent = '点击以加入我们';
         userArea.onclick = () => window.location.href = 'user-system.html';
     }
 }
-
 
 // --- 事件监听器 ---
 
