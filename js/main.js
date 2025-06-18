@@ -26,6 +26,14 @@ const createIcon = (type) => {
     });
 };
 
+// --- 为用户当前位置创建一个专门的、更小的图标 ---
+const userLocationIcon = L.divIcon({
+    className: 'user-location-marker-container',
+    html: '<div class="user-location-marker-pulse"></div><div class="user-location-marker"></div>',
+    iconSize: [20, 20],
+    iconAnchor: [10, 10]
+});
+
 // --- 核心功能函数 ---
 
 function displayMarkers(markers) {
@@ -238,7 +246,8 @@ document.getElementById('locate-btn').addEventListener('click', function() {
                 if (userLocationMarker) {
                     userLocationMarker.setLatLng([lat, lng]);
                 } else {
-                    userLocationMarker = L.marker([lat, lng], { /* ... icon ... */ }).addTo(map);
+                    // 使用我们新定义的、更小的图标
+                    userLocationMarker = L.marker([lat, lng], { icon: userLocationIcon }).addTo(map);
                 }
             },
             () => alert('无法获取您的位置。')
