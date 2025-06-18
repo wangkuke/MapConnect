@@ -181,7 +181,7 @@ const Admin = {
 
     fetchStats() {
         fetch(`${API_BASE_URL}/admin/stats`, {
-            headers: { 'X-Admin-Username': this.state.currentAdmin.username }
+            headers: { 'X-Admin-Username': encodeURIComponent(this.state.currentAdmin.username) }
         })
         .then(res => {
             if (!res.ok) return res.json().then(err => { throw new Error(err.error || '获取统计数据失败') });
@@ -194,7 +194,7 @@ const Admin = {
     
     fetchMarkers() {
         fetch(`${API_BASE_URL}/admin/all-markers`, {
-            headers: { 'X-Admin-Username': this.state.currentAdmin.username }
+            headers: { 'X-Admin-Username': encodeURIComponent(this.state.currentAdmin.username) }
         })
         .then(res => {
             if (!res.ok) return res.json().then(err => { throw new Error(err.error || '获取标注失败') });
@@ -207,7 +207,7 @@ const Admin = {
 
     fetchUsers() {
         fetch(`${API_BASE_URL}/admin/users`, {
-            headers: { 'X-Admin-Username': this.state.currentAdmin.username }
+            headers: { 'X-Admin-Username': encodeURIComponent(this.state.currentAdmin.username) }
         })
         .then(res => {
             if (!res.ok) return res.json().then(err => { throw new Error(err.error || '获取用户失败') });
