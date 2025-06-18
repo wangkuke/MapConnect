@@ -475,6 +475,9 @@
     </div>
 
     <script>
+        // 新的自定义域名 API 地址
+        const API_BASE_URL = 'https://api.9696mm.club';
+
         // 初始化地图
         const map = L.map('map').setView([31.2304, 121.4737], 13);
 
@@ -593,8 +596,6 @@
         // --- Event Listeners and Initial Load ---
         
         document.addEventListener('DOMContentLoaded', () => {
-            const API_BASE_URL = 'https://user-api.532736720.workers.dev';
-
             // --- DEBOUNCED SEARCH ---
             const debouncedSearch = debounce(searchTerm => {
                 if (!searchTerm || searchTerm.length < 2) {
