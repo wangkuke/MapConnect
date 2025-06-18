@@ -45,15 +45,19 @@
 
         @media (max-width: 768px) {
             .container {
-                grid-template-columns: 1fr;
-                grid-template-rows: 45vh 1fr;
+                display: block;
+                height: auto;
                 padding: 10px;
-                gap: 10px;
             }
 
             .panel {
                 padding: 15px;
-                overflow-y: auto;
+                overflow-y: visible;
+                margin-bottom: 15px;
+            }
+
+            .map-container {
+                height: 80vh;
             }
 
             .logo h1 {
