@@ -181,32 +181,41 @@ const Admin = {
 
     fetchStats() {
         fetch(`${API_BASE_URL}/admin/stats`, {
-            headers: { 'X-Admin-Username': encodeURIComponent(this.state.currentAdmin.username) }
+            headers: { 'X-Admin-Username': this.state.currentAdmin.username }
         })
-        .then(res => res.json()).then(stats => {
+        .then(res => {
+            if (!res.ok) return res.json().then(err => { throw new Error(err.error || '获取统计数据失败') });
+            return res.json();
+        }).then(stats => {
             this.state.stats = stats;
             this.updateStats();
-        }).catch(console.error);
+        }).catch(err => alert(err.message));
     },
     
     fetchMarkers() {
         fetch(`${API_BASE_URL}/admin/all-markers`, {
-            headers: { 'X-Admin-Username': encodeURIComponent(this.state.currentAdmin.username) }
+            headers: { 'X-Admin-Username': this.state.currentAdmin.username }
         })
-        .then(res => res.json()).then(markers => {
+        .then(res => {
+            if (!res.ok) return res.json().then(err => { throw new Error(err.error || '获取标注失败') });
+            return res.json();
+        }).then(markers => {
             this.state.markers = markers;
             this.renderTable();
-        }).catch(console.error);
+        }).catch(err => alert(err.message));
     },
 
     fetchUsers() {
         fetch(`${API_BASE_URL}/admin/users`, {
-            headers: { 'X-Admin-Username': encodeURIComponent(this.state.currentAdmin.username) }
+            headers: { 'X-Admin-Username': this.state.currentAdmin.username }
         })
-        .then(res => res.json()).then(users => {
+        .then(res => {
+            if (!res.ok) return res.json().then(err => { throw new Error(err.error || '获取用户失败') });
+            return res.json();
+        }).then(users => {
             this.state.users = users;
             this.renderUsersTable();
-        }).catch(console.error);
+        }).catch(err => alert(err.message));
     },
 
     updateStats() {
