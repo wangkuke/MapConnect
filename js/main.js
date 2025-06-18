@@ -181,6 +181,20 @@ function updateUserUI() {
             userAvatar.textContent = (user.name || user.username).charAt(0).toUpperCase();
         }
 
+        // 恢复退出登录功能
+        const logoutLink = document.createElement('a');
+        logoutLink.href = '#';
+        logoutLink.textContent = ' 退出登录';
+        logoutLink.style.color = 'var(--primary)';
+        logoutLink.style.fontWeight = 'bold';
+        logoutLink.style.marginLeft = '8px';
+        logoutLink.onclick = (e) => {
+            e.preventDefault();
+            sessionStorage.removeItem('mapconnect_currentUser');
+            window.location.reload();
+        };
+        userStatusEl.appendChild(logoutLink);
+
         // 点击用户区域跳转到个人资料设置
         userArea.onclick = () => window.location.href = 'user-system.html#profile';
         
