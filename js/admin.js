@@ -1,3 +1,5 @@
+alert('正在运行 js/admin.js 版本 v2.0');
+
 const App = {
     state: {
         currentAdmin: null,
