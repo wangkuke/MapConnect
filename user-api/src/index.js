@@ -191,7 +191,7 @@ export default {
 			const response = await router.handle(request, env, ctx);
 			return addCorsHeaders(response);
 		} catch (e) {
-			console.error(e);
+			console.error('捕获到未处理的异常:', e);
 			return addCorsHeaders(new Response(JSON.stringify({ error: '内部服务器错误' }), { status: 500 }));
 		}
 	}
