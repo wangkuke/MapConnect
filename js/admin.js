@@ -2,7 +2,10 @@
 // 版本：2.0
 // 作者：Claude
 
-const API_BASE_URL = 'https://user-api.532736720.workers.dev';
+// 原 Cloudflare Workers 地址
+// const API_BASE_URL = 'https://user-api.532736720.workers.dev';
+// 新的自定义域名 API 地址
+const API_BASE_URL = 'https://api.9696mm.club';
 
 // 管理员登录与数据管理
 const Admin = {
