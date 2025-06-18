@@ -247,7 +247,14 @@ const App = {
             const username = document.getElementById('admin-username').value;
             const password = document.getElementById('admin-password').value;
             
-            fetch('https://user-api.532736720.workers.dev/login', {
+            const apiUrl = 'https://user-api.532736720.workers.dev/login';
+
+            // --- 调试代码 ---
+            console.log('即将发送登录请求到:', apiUrl);
+            // --- 调试代码结束 ---
+
+            // 确保登录请求发送到正确的线上API
+            fetch(apiUrl, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ username, password })
