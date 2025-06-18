@@ -14,13 +14,19 @@ const App = {
 
     router() {
         const container = document.getElementById('app-container');
+        // 清空容器
+        container.innerHTML = '';
+
         if (!this.state.currentAdmin || this.state.currentAdmin.role !== 'admin') {
-            container.innerHTML = this.LoginPage();
+            const loginPageElement = this.LoginPage();
+            container.appendChild(loginPageElement);
             this.attachLoginListeners();
             return;
         }
 
-        container.innerHTML = this.AdminPanel();
+        const adminPanelElement = this.AdminPanel();
+        // 因为 AdminPanel 仍然返回字符串，所以这里用 innerHTML
+        container.innerHTML = adminPanelElement; 
         this.attachAdminPanelListeners();
 
         const hash = window.location.hash || '#dashboard';
@@ -88,27 +94,41 @@ const App = {
 
     // --- RENDER METHODS ---
     LoginPage() {
-        return `
-        <div class="login-container">
-            <div class="login-card">
-                <div class="login-header">
-                    <h2>地图标注管理后台</h2>
-                </div>
-                <div class="login-body">
-                    <form id="admin-login-form">
-                        <div class="mb-3">
-                            <label class="form-label">用户名</label>
-                            <input type="text" id="admin-username" class="form-control" required>
-                        </div>
-                        <div class="mb-3">
-                            <label class="form-label">密码</label>
-                            <input type="password" id="admin-password" class="form-control" required>
-                        </div>
-                        <button type="submit" class="btn btn-primary w-100">登录</button>
-                    </form>
-                </div>
+        const container = document.createElement('div');
+        container.className = 'login-container';
+
+        const card = document.createElement('div');
+        card.className = 'login-card';
+        
+        const header = document.createElement('div');
+        header.className = 'login-header';
+        header.innerHTML = '<h2>地图标注管理后台</h2>';
+        
+        const body = document.createElement('div');
+        body.className = 'login-body';
+        
+        const form = document.createElement('form');
+        form.id = 'admin-login-form';
+        
+        form.innerHTML = `
+            <div class="mb-3">
+                <label class="form-label">用户名</label>
+                <input type="text" id="admin-username" class="form-control" required>
             </div>
-        </div>`;
+            <div class="mb-3">
+                <label class="form-label">密码</label>
+                <input type="password" id="admin-password" class="form-control" required>
+            </div>
+            <button type="submit" class="btn btn-primary w-100">登录</button>
+        `;
+        
+        body.appendChild(form);
+        card.appendChild(header);
+        card.appendChild(body);
+        container.appendChild(card);
+        
+        // 返回一个 DOM 元素而不是字符串
+        return container;
     },
     
     AdminPanel() {
