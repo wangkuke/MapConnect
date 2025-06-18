@@ -688,6 +688,57 @@
             document.querySelector('.upload-btn').addEventListener('click', () => {
                 alert('头像上传功能正在开发中，敬请期待！');
             });
+
+            // The Google button event is now handled by the Google library
+        }
+
+        // --- Google Sign-In Handler ---
+        function handleGoogleResponse(response) {
+            const credential = response.credential;
+            // Send the credential to your backend
+            fetch(`${API_BASE_URL}/google-login`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ credential }),
+            })
+            .then(async res => {
+                if (!res.ok) {
+                    const err = await res.json();
+                    throw new Error(err.error || 'Google login failed');
+                }
+                return res.json();
+            })
+            .then(data => {
+                sessionStorage.setItem('mapconnect_currentUser', JSON.stringify(data.user));
+                alert(data.message || '登录成功！即将返回地图页面。');
+                window.location.href = 'index.html';
+            })
+            .catch(error => {
+                alert(`Google 登录失败: ${error.message}`);
+                console.error('Google login error:', error);
+            });
+        }
+
+        function initializeGoogleSignIn() {
+            try {
+                google.accounts.id.initialize({
+                    client_id: '148741481582-74s7at5usheng5atgrnpgq3p3bnamoj2.apps.googleusercontent.com', // <-- 请务必替换成您自己的 Google Client ID
+                    callback: handleGoogleResponse
+                });
+                google.accounts.id.renderButton(
+                    document.querySelector('.social-btn.google'),
+                    { theme: 'outline', size: 'large', type: 'icon', shape: 'circle' } 
+                );
+                google.accounts.id.prompt(); //
+            } catch (e) {
+                console.error("Google Sign-In initialization failed:", e);
+                // Fallback for the button if initialization fails
+                document.querySelector('.social-btn.google').addEventListener('click', () => {
+                    alert('Google登录服务当前不可用。');
+                });
+            }
         }
 
         function handleAvatarUpload(event) {
@@ -745,6 +796,12 @@
 
         setupTabs();
         setupEventListeners();
+        
+        // Defer Google Sign-In initialization until the GSI client is loaded
+        const gsiScript = document.querySelector('script[src="https://accounts.google.com/gsi/client"]');
+        gsiScript.onload = () => {
+            initializeGoogleSignIn();
+        };
 
         if (currentUser) {
             updateUserUI(true);
