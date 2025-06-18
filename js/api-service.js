@@ -61,6 +61,7 @@ async function apiFetch(endpoint, options = {}) {
         const response = await fetch(`${API_BASE_URL}${endpoint}`, {
             ...options,
             headers,
+            credentials: 'include',
         });
         return handleResponse(response);
     } catch (error) {
@@ -130,4 +131,13 @@ const apiService = {
      * 删除一个标注
      * @param {string|number} markerId - 标注ID
      */
-    deleteMarker: (markerId) => apiFetch(`
+    deleteMarker: (markerId) => apiFetch(`/markers/${markerId}`, {
+        method: 'DELETE',
+    }),
+
+    /**
+     * 获取用户的公开资料
+     * @param {string} username - 用户名
+     */
+    getUserProfile: (username) => apiFetch(`/users/${username}`),
+};
