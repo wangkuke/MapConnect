@@ -233,8 +233,11 @@ const App = {
                 body: JSON.stringify({ username, password })
             })
             .then(res => res.ok ? res.json() : Promise.reject(res.json()))
-            .then(user => {
-                if (user.role !== 'admin') throw new Error('非管理员用户');
+            .then(data => {
+                const user = data.user; 
+                if (!user || user.role !== 'admin') {
+                    throw new Error('非管理员用户或用户角色未定义');
+                }
                 sessionStorage.setItem('mapconnect_currentAdmin', JSON.stringify(user));
                 this.state.currentAdmin = user;
                 this.router();
@@ -242,7 +245,7 @@ const App = {
             .catch(async errPromise => {
                  try {
                     const err = await errPromise;
-                    alert(`登录失败: ${err.error || '未知错误'}`);
+                    alert(`登录失败: ${err.error || err.message || '未知错误'}`);
                 } catch (e) {
                     alert('登录失败，请检查网络或联系支持。');
                 }
