@@ -500,8 +500,9 @@
         const switchLinks = document.querySelectorAll('.account-notice a');
         const currentUser = JSON.parse(sessionStorage.getItem('mapconnect_currentUser'));
 
-        // 全局API基地址
-        const API_BASE_URL = 'https://user-api.532736720.workers.dev';
+        // 用户服务 API
+        // 新的自定义域名 API 地址
+        const API_BASE_URL = 'https://api.9696mm.club';
 
         function switchTab(tabTargetId) {
             tabs.forEach(t => t.classList.remove('active'));
