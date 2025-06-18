@@ -300,7 +300,15 @@
             
             // 使用 apiService 获取用户标注
             apiService.getUserMarkers(username)
-                .then(renderMarkers)
+                .then(data => {
+                    // 强制检查并使用 data.results，如果不存在则使用 data 本身，以兼容两种可能的后端返回格式
+                    const markers = Array.isArray(data) ? data : data.results;
+                    if (!markers) {
+                        console.error('无法从API响应中解析出标注数组', data);
+                        throw new Error('从服务器收到了意外的数据格式。');
+                    }
+                    renderMarkers(markers);
+                })
                 .catch(error => {
                     console.error('获取标注失败:', error);
                     markersContainer.innerHTML = `<p>加载您的标注时出错: ${error.message}</p>`;
