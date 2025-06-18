@@ -222,7 +222,7 @@ document.getElementById('add-marker-btn').addEventListener('click', () => window
 document.querySelector('.search-container').addEventListener('click', () => window.location.href = 'marker-search.html');
 document.querySelectorAll('.func-card').forEach(card => {
     card.addEventListener('click', function() {
-        const title = this.querySelector('h3').textContent;
+        const title = this.querySelector('h3').textContent.trim();
         const pageMap = { "添加标注": "marker-editor.html", "我的球友": "messages.html", "个人设置": "user-system.html#profile", "我的标注": "my-markers.html" };
         const targetPage = pageMap[title];
         
@@ -231,7 +231,7 @@ document.querySelectorAll('.func-card').forEach(card => {
         const currentUser = JSON.parse(sessionStorage.getItem('mapconnect_currentUser'));
 
         if (requireLogin.includes(title) && !currentUser) {
-            alert('此功能需要登录后才能使用，将为您跳转到登录页面。');
+            // alert('此功能需要登录后才能使用，将为您跳转到登录页面。');
             window.location.href = 'user-system.html';
         } else if (targetPage) {
             window.location.href = targetPage;
