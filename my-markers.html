@@ -387,7 +387,7 @@
                 }
                 // 处理编辑按钮
                 else if (target.classList.contains('btn-edit')) {
-                    alert(`编辑功能待实现，标注ID: ${markerId}`);
+                    alert(`编辑功能待实现`);
                 }
             });
         }
@@ -410,18 +410,19 @@
         }
 
         function deleteMarker(markerId, cardElement) {
-            if (!confirm('确定要永久删除这个标注吗？此操作不可撤销。')) return;
+            alert('删除功能待实现');
+            // if (!confirm('确定要永久删除这个标注吗？此操作不可撤销。')) return;
             
-            // 使用 apiService 删除标注
-            apiService.deleteMarker(markerId)
-                .then(() => {
-                    console.log(`ID为 ${markerId} 的标注删除成功`);
-                    cardElement.remove();
-                })
-                .catch(error => {
-                    console.error(`删除ID为 ${markerId} 的标注失败:`, error);
-                    alert(`删除失败: ${error.message}`);
-                });
+            // // 使用 apiService 删除标注
+            // apiService.deleteMarker(markerId)
+            //     .then(() => {
+            //         console.log(`ID为 ${markerId} 的标注删除成功`);
+            //         cardElement.remove();
+            //     })
+            //     .catch(error => {
+            //         console.error(`删除ID为 ${markerId} 的标注失败:`, error);
+            //         alert(`删除失败: ${error.message}`);
+            //     });
         }
     </script>
 </body>
