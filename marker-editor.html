@@ -517,8 +517,12 @@
         // 防止全局变量冲突
         (function() {
             // 定义API URL
-            const API_PRIMARY_URL = 'https://user-api.532736720.workers.dev';
-            let BACKUP_API_URL = 'https://backup-api.532736720.workers.dev'; 
+            // 原 Cloudflare Workers 地址
+            // const API_PRIMARY_URL = 'https://user-api.532736720.workers.dev';
+            // 新的自定义域名 API 地址
+            const API_PRIMARY_URL = 'https://api.9696mm.club';
+            // 备份 API URL 也需要更新
+            let BACKUP_API_URL = 'https://backup-api.9696mm.club'; 
             let CURRENT_API_URL = API_PRIMARY_URL;
             let apiHealthy = true;
 
