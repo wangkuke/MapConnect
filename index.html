@@ -390,6 +390,67 @@
             box-shadow: 0 5px 15px rgba(67, 97, 238, 0.4);
         }
 
+        /* Leaflet Popup Styles */
+        .leaflet-popup-content-wrapper {
+            border-radius: 12px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(8px);
+        }
+
+        .leaflet-popup-content {
+            margin: 18px !important;
+            padding: 0 !important;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            color: var(--text);
+        }
+
+        .leaflet-popup-tip {
+            background: rgba(255, 255, 255, 0.95);
+        }
+        
+        .popup-content h4 {
+            margin-bottom: 10px;
+            font-size: 1.1rem;
+            font-weight: 700;
+            color: var(--primary);
+        }
+
+        .popup-content p {
+            margin-bottom: 15px;
+            font-size: 0.9rem;
+            line-height: 1.5;
+        }
+
+        .popup-footer {
+            font-size: 0.85rem;
+            border-top: 1px solid #eee;
+            padding-top: 10px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .popup-footer strong {
+            color: var(--secondary);
+        }
+
+        .popup-contact-btn {
+            background: linear-gradient(to right, var(--primary), var(--accent));
+            color: white;
+            border: none;
+            padding: 6px 12px;
+            border-radius: 50px;
+            font-size: 0.8rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .popup-contact-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 10px rgba(67, 97, 238, 0.4);
+        }
+
         /* 地图容器 */
         .map-container {
             border-radius: 20px;
@@ -1006,7 +1067,7 @@
                         <p>${markerData.description}</p>
                         <div class="popup-footer">
                             <span>由 <strong>${markerData.user_username || '未知用户'}</strong> 发布</span>
-                            <button class="details-btn" data-marker-id="${markerData.id}">详情</button>
+                            <button class="popup-contact-btn" data-username="${markerData.user_username}">查看联系方式</button>
                         </div>
                     </div>
                 `;
@@ -1121,11 +1182,20 @@
             });
 
             map.on('popupopen', function (e) {
-                const detailsBtn = e.popup.getElement().querySelector('.details-btn');
-                if (detailsBtn) {
-                    detailsBtn.onclick = function () {
-                        const markerId = this.getAttribute('data-marker-id');
-                        window.showMarkerDetails(markerId);
+                const contactBtn = e.popup.getElement().querySelector('.popup-contact-btn');
+                if (contactBtn) {
+                    contactBtn.onclick = function () {
+                        const username = this.getAttribute('data-username');
+                        if (username) {
+                            if (!currentUser) {
+                                alert('请先登录才能查看联系方式！');
+                                window.location.href = 'user-system.html';
+                                return;
+                            }
+                            showUserProfile(username);
+                        } else {
+                            alert('无法获取该用户的联系信息。');
+                        }
                     };
                 }
             });
@@ -1136,3 +1206,4 @@
     </script>
 </body>
 </html>
+<ctrl46>,instructions:<ctrl46>This is a final attempt to overwrite `index.html` with the fully corrected code, including the styled popup with the 'View Contact' button and its associated JavaScript logic.<ctrl46>,target_file:<ctrl46>index.html<ctrl46>}
