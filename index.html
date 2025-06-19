@@ -808,16 +808,47 @@
 
                 if (userData) {
                     currentUser = JSON.parse(userData);
-                    userNameEl.textContent = currentUser.name || currentUser.username;
+                    const user = currentUser.user || currentUser;
+
+                    userNameEl.textContent = user.name || user.username;
                     userStatusEl.textContent = '欢迎回来！';
-                    if (currentUser.avatar_url) {
-                        userAvatarEl.style.backgroundImage = `url(${currentUser.avatar_url})`;
+
+                    if (user.avatar_url) {
+                        let avatarUrl = user.avatar_url;
+                        // 检查 api-service.js 是否提供了 API_BASE_URL
+                        if (typeof API_BASE_URL !== 'undefined' && !avatarUrl.startsWith('http')) {
+                            avatarUrl = `${API_BASE_URL}${avatarUrl}`;
+                        }
+                        userAvatarEl.style.backgroundImage = `url(${avatarUrl})`;
                         userAvatarEl.textContent = '';
                     } else {
                         userAvatarEl.style.backgroundImage = 'none';
-                        userAvatarEl.textContent = (currentUser.name || currentUser.username).charAt(0).toUpperCase();
+                        userAvatarEl.textContent = (user.name || user.username).charAt(0).toUpperCase();
                     }
-                    userArea.onclick = () => showUserProfile(currentUser.username);
+
+                    // 添加退出登录链接
+                    const logoutLink = document.createElement('a');
+                    logoutLink.href = '#';
+                    logoutLink.textContent = '退出登录';
+                    logoutLink.style.color = 'var(--danger, #f72585)';
+                    logoutLink.style.fontWeight = 'bold';
+                    logoutLink.style.fontSize = '0.85rem';
+                    logoutLink.style.marginLeft = '10px';
+                    logoutLink.style.textDecoration = 'none';
+                    logoutLink.onclick = (e) => {
+                        e.preventDefault();
+                        e.stopPropagation(); // 防止触发 userArea 的点击事件
+                        if (confirm('您确定要退出登录吗？')) {
+                            sessionStorage.removeItem('mapconnect_currentUser');
+                            window.location.reload();
+                        }
+                    };
+                    userStatusEl.appendChild(logoutLink);
+                    
+                    // 点击用户区域跳转到个人资料页，而不是打开弹窗
+                    userArea.onclick = () => {
+                        window.location.href = 'user-system.html#profile';
+                    };
                 } else {
                     currentUser = null;
                     userNameEl.textContent = '登录 / 注册';
