@@ -2,10 +2,16 @@
 // 版本：2.0
 // 作者：Claude
 
-// 原 Cloudflare Workers 地址
-// const API_BASE_URL = 'https://user-api.532736720.workers.dev';
-// 新的自定义域名 API 地址
-const API_BASE_URL = 'https://api.9696mm.club';
+// 首先检查全局变量是否已经存在
+if (typeof API_CONFIG === 'undefined') {
+    // 原 Cloudflare Workers 地址
+    // const API_BASE_URL = 'https://user-api.532736720.workers.dev';
+
+    // 新的自定义域名 API 地址
+    const API_CONFIG = {
+        BASE_URL: 'https://api.9696mm.club'
+    };
+}
 
 // 管理员登录与数据管理
 const Admin = {
@@ -126,9 +132,9 @@ const Admin = {
         
         if (!username || !password) return alert('请输入用户名和密码');
         
-        console.log('即将发送登录请求到:', `${API_BASE_URL}/login`);
+        console.log('即将发送登录请求到:', `${API_CONFIG.BASE_URL}/login`);
         
-        fetch(`${API_BASE_URL}/login`, {
+        fetch(`${API_CONFIG.BASE_URL}/login`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ username, password })
@@ -183,7 +189,7 @@ const Admin = {
     },
 
     fetchStats() {
-        fetch(`${API_BASE_URL}/admin/stats`, {
+        fetch(`${API_CONFIG.BASE_URL}/admin/stats`, {
             headers: { 'X-Admin-Username': encodeURIComponent(this.state.currentAdmin.username) }
         })
         .then(res => {
@@ -196,7 +202,7 @@ const Admin = {
     },
     
     fetchMarkers() {
-        fetch(`${API_BASE_URL}/admin/all-markers`, {
+        fetch(`${API_CONFIG.BASE_URL}/admin/all-markers`, {
             headers: { 'X-Admin-Username': encodeURIComponent(this.state.currentAdmin.username) }
         })
         .then(res => {
@@ -209,7 +215,7 @@ const Admin = {
     },
 
     fetchUsers() {
-        fetch(`${API_BASE_URL}/admin/users`, {
+        fetch(`${API_CONFIG.BASE_URL}/admin/users`, {
             headers: { 'X-Admin-Username': encodeURIComponent(this.state.currentAdmin.username) }
         })
         .then(res => {
@@ -345,7 +351,7 @@ const Admin = {
             status: document.getElementById('edit-marker-status').value,
         };
 
-        fetch(`${API_BASE_URL}/admin/markers/${markerId}`, {
+        fetch(`${API_CONFIG.BASE_URL}/admin/markers/${markerId}`, {
             method: 'PUT',
             headers: {
                 'Content-Type': 'application/json',
@@ -376,7 +382,7 @@ const Admin = {
             role: document.getElementById('edit-user-role').value,
         };
 
-        fetch(`${API_BASE_URL}/admin/users/${userId}`, {
+        fetch(`${API_CONFIG.BASE_URL}/admin/users/${userId}`, {
             method: 'PUT',
             headers: {
                 'Content-Type': 'application/json',
@@ -400,7 +406,7 @@ const Admin = {
     },
 
     deleteMarker(markerId) {
-        fetch(`${API_BASE_URL}/admin/markers/${markerId}`, {
+        fetch(`${API_CONFIG.BASE_URL}/admin/markers/${markerId}`, {
             method: 'DELETE',
             headers: { 'X-Admin-Username': encodeURIComponent(this.state.currentAdmin.username) }
         })
@@ -413,7 +419,7 @@ const Admin = {
     },
 
     deleteUser(userId) {
-        fetch(`${API_BASE_URL}/admin/users/${userId}`, {
+        fetch(`${API_CONFIG.BASE_URL}/admin/users/${userId}`, {
             method: 'DELETE',
             headers: { 'X-Admin-Username': encodeURIComponent(this.state.currentAdmin.username) }
         })
