@@ -500,10 +500,11 @@
         const switchLinks = document.querySelectorAll('.account-notice a');
         const currentUser = JSON.parse(sessionStorage.getItem('mapconnect_currentUser'));
 
-        // 检查变量是否已存在，如果不存在才声明
-        if (typeof API_BASE_URL === 'undefined') {
-            // 用户服务 API
-            const API_BASE_URL = 'https://api.9696mm.club';
+        // 检查API_CONFIG是否已存在，如果不存在则创建
+        if (typeof API_CONFIG === 'undefined') {
+            window.API_CONFIG = {
+                BASE_URL: 'https://api.9696mm.club'
+            };
         }
 
         function switchTab(tabTargetId) {
@@ -544,7 +545,7 @@
                 let avatarUrl = currentUser.avatar_url;
                 // 如果URL不是完整的，就拼接API基地址
                 if (!avatarUrl.startsWith('http')) {
-                    avatarUrl = `${API_BASE_URL}${avatarUrl}`;
+                    avatarUrl = `${API_CONFIG.BASE_URL}${avatarUrl}`;
                 }
                 avatarCircle.style.backgroundImage = `url(${avatarUrl})`;
                 avatarCircle.textContent = ''; // Clear the initial text
@@ -589,7 +590,7 @@
             const identifier = document.getElementById('login-username').value;
             const password = document.getElementById('login-password').value;
             
-            fetch(`${API_BASE_URL}/login`, {
+            fetch(`${API_CONFIG.BASE_URL}/login`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 credentials: 'include',
@@ -619,7 +620,7 @@
             const email = document.getElementById('register-email').value;
             const password = document.getElementById('register-password').value;
 
-            fetch(`${API_BASE_URL}/register`, {
+            fetch(`${API_CONFIG.BASE_URL}/register`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 credentials: 'include',
@@ -657,7 +658,7 @@
                 age: document.getElementById('profile-age').value ? parseInt(document.getElementById('profile-age').value, 10) : null
             };
 
-            fetch(`${API_BASE_URL}/profile`, {
+            fetch(`${API_CONFIG.BASE_URL}/profile`, {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
                 credentials: 'include',
@@ -706,7 +707,7 @@
         function handleGoogleResponse(response) {
             const credential = response.credential;
             // Send the credential to your backend
-            fetch(`${API_BASE_URL}/google-login`, {
+            fetch(`${API_CONFIG.BASE_URL}/google-login`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -774,7 +775,7 @@
             const formData = new FormData();
             formData.append('avatar', file);
 
-            fetch(`${API_BASE_URL}/avatar`, {
+            fetch(`${API_CONFIG.BASE_URL}/avatar`, {
                 method: 'POST',
                 headers: {
                     // 传递用户名用于身份识别，代替Token认证（临时方案）
