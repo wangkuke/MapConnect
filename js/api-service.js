@@ -3,14 +3,12 @@
  * 负责与后端API的所有通信
  */
 
-// 原 Cloudflare Workers 地址
-// const API_BASE_URL = 'https://user-api.532736720.workers.dev';
-
-// 新的自定义域名 API 地址
-// 使用命名空间避免变量冲突
-const API_CONFIG = {
-    BASE_URL: 'https://api.9696mm.club'
-};
+// 检查全局API_CONFIG是否已存在，如果不存在则创建
+if (typeof window.API_CONFIG === 'undefined') {
+    window.API_CONFIG = {
+        BASE_URL: 'https://api.9696mm.club'
+    };
+}
 
 /**
  * 处理 API 响应的通用函数
