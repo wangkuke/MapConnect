@@ -915,13 +915,22 @@
             function setupEventListeners() {
                 document.querySelector('.functions .func-card:nth-child(1)').addEventListener('click', handleAddMarkerClick);
                 
+                document.querySelector('.functions .func-card:nth-child(2)').addEventListener('click', () => {
+                     if (!currentUser) {
+                        alert('请先登录！');
+                        window.location.href = 'user-system.html';
+                        return;
+                    }
+                    window.location.href = 'messages.html';
+                });
+                
                 document.querySelector('.functions .func-card:nth-child(4)').addEventListener('click', () => {
                      if (!currentUser) {
                         alert('请先登录！');
                         window.location.href = 'user-system.html';
                         return;
                     }
-                    window.location.href = `marker-search.html?username=${currentUser.username}`;
+                    window.location.href = 'my-markers.html';
                 });
                 
                 document.querySelector('.functions .func-card:nth-child(3)').addEventListener('click', () => {
@@ -949,8 +958,7 @@
                     window.location.href = 'user-system.html';
                     return;
                 }
-                alert("请在地图上点击您想添加标注的位置。");
-                map.once('click', onMapClickForNewMarker);
+                window.location.href = 'marker-editor.html';
             }
             
             async function onMapClickForNewMarker(e) {
