@@ -876,9 +876,9 @@
 
                     if (user.avatar_url) {
                         let avatarUrl = user.avatar_url;
-                        // 检查 api-service.js 是否提供了 API_BASE_URL
-                        if (typeof API_BASE_URL !== 'undefined' && !avatarUrl.startsWith('http')) {
-                            avatarUrl = `${API_BASE_URL}${avatarUrl}`;
+                        // 检查 api-service.js 是否提供了 API_CONFIG
+                        if (!avatarUrl.startsWith('http')) {
+                            avatarUrl = `${API_CONFIG.BASE_URL}${avatarUrl}`;
                         }
                         userAvatarEl.style.backgroundImage = `url(${avatarUrl})`;
                         userAvatarEl.textContent = '';
@@ -1016,7 +1016,7 @@
                     modal.innerHTML = `
                         <button class="profile-modal-close-btn">&times;</button>
                         <div class="profile-modal-content">
-                            <div class="avatar" style="background-image: url(${profile.avatar_url || ''})">${profile.avatar_url ? '' : (profile.name || profile.username).charAt(0).toUpperCase()}</div>
+                            <div class="avatar" style="background-image: url(${profile.avatar_url ? (profile.avatar_url.startsWith('http') ? profile.avatar_url : API_CONFIG.BASE_URL + profile.avatar_url) : ''})">${profile.avatar_url ? '' : (profile.name || profile.username).charAt(0).toUpperCase()}</div>
                             <h2 class="name">${profile.name || profile.username}</h2>
                             <div class="user-details">
                                 ${profile.gender && profile.gender !== 'secret' ? `<div class="detail-item"><i class="fas fa-venus-mars"></i> ${profile.gender === 'male' ? '男' : '女'}</div>` : ''}
@@ -1067,7 +1067,7 @@
                         <p>${markerData.description}</p>
                         <div class="popup-footer">
                             <span>由 <strong>${markerData.user_username || '未知用户'}</strong> 发布</span>
-                            <button class="popup-contact-btn" data-username="${markerData.user_username}">查看联系方式</button>
+                            <button class="popup-contact-btn" data-username="${markerData.user_username}" data-contact="${markerData.contact || '未提供联系方式'}">查看联系方式</button>
                         </div>
                     </div>
                 `;
@@ -1186,15 +1186,18 @@
                 if (contactBtn) {
                     contactBtn.onclick = function () {
                         const username = this.getAttribute('data-username');
-                        if (username) {
-                            if (!currentUser) {
-                                alert('请先登录才能查看联系方式！');
-                                window.location.href = 'user-system.html';
-                                return;
-                            }
-                            showUserProfile(username);
+                        const contact = this.getAttribute('data-contact');
+                        
+                        if (!currentUser) {
+                            alert('请先登录才能查看联系方式！');
+                            window.location.href = 'user-system.html';
+                            return;
+                        }
+                        
+                        if (contact && contact !== '未提供联系方式') {
+                            alert(`联系方式: ${contact}`);
                         } else {
-                            alert('无法获取该用户的联系信息。');
+                            alert('该用户未提供联系方式');
                         }
                     };
                 }
@@ -1206,4 +1209,3 @@
     </script>
 </body>
 </html>
-<ctrl46>,instructions:<ctrl46>This is a final attempt to overwrite `index.html` with the fully corrected code, including the styled popup with the 'View Contact' button and its associated JavaScript logic.<ctrl46>,target_file:<ctrl46>index.html<ctrl46>}
