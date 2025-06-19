@@ -7,7 +7,10 @@
 // const API_BASE_URL = 'https://user-api.532736720.workers.dev';
 
 // 新的自定义域名 API 地址
-const API_BASE_URL = 'https://api.9696mm.club';
+// 使用命名空间避免变量冲突
+const API_CONFIG = {
+    BASE_URL: 'https://api.9696mm.club'
+};
 
 /**
  * 处理 API 响应的通用函数
@@ -58,7 +61,7 @@ async function apiFetch(endpoint, options = {}) {
     }
 
     try {
-        const response = await fetch(`${API_BASE_URL}${endpoint}`, {
+        const response = await fetch(`${API_CONFIG.BASE_URL}${endpoint}`, {
             ...options,
             headers,
             credentials: 'include',
