@@ -966,7 +966,8 @@
                 card.className = 'marker-card animate';
                 card.dataset.markerId = markerData.id;
 
-                const userInitial = (markerData.user_username || 'U').charAt(0).toUpperCase();
+                const displayName = markerData.user_name || markerData.user_username || '未知用户';
+                const userInitial = displayName.charAt(0).toUpperCase();
                 const shortDescription = markerData.description.length > 40 
                     ? markerData.description.substring(0, 40) + '...' 
                     : markerData.description;
@@ -977,7 +978,7 @@
                     <div class="marker-footer">
                         <div class="marker-user">
                             <span>${userInitial}</span>
-                            <small>${markerData.user_username || '未知用户'}</small>
+                            <small>${displayName}</small>
                         </div>
                         <button class="contact-btn">联系 TA</button>
                     </div>
@@ -1061,13 +1062,14 @@
             }
             
             function createPopupContent(markerData) {
+                const displayName = markerData.user_name || markerData.user_username || '未知用户';
                 return `
                     <div class="popup-content">
                         <h4>${markerData.title}</h4>
                         <p>${markerData.description}</p>
                         <div class="popup-footer">
-                            <span>由 <strong>${markerData.user_username || '未知用户'}</strong> 发布</span>
-                            <button class="popup-contact-btn" data-username="${markerData.user_username}" data-contact="${markerData.contact || '未提供联系方式'}">查看联系方式</button>
+                            <span>由 <strong class="user-profile-link" data-username="${markerData.user_username}" style="cursor:pointer; color:var(--primary); text-decoration:underline">${displayName}</strong> 发布</span>
+                            <button class="popup-contact-btn" data-name="${markerData.user_name}" data-contact="${markerData.contact || '未提供联系方式'}">查看联系方式</button>
                         </div>
                     </div>
                 `;
@@ -1182,10 +1184,10 @@
             });
 
             map.on('popupopen', function (e) {
+                // 处理联系方式按钮点击
                 const contactBtn = e.popup.getElement().querySelector('.popup-contact-btn');
                 if (contactBtn) {
                     contactBtn.onclick = function () {
-                        const username = this.getAttribute('data-username');
                         const contact = this.getAttribute('data-contact');
                         
                         if (!currentUser) {
@@ -1198,6 +1200,17 @@
                             alert(`联系方式: ${contact}`);
                         } else {
                             alert('该用户未提供联系方式');
+                        }
+                    };
+                }
+                
+                // 处理用户昵称点击
+                const userProfileLink = e.popup.getElement().querySelector('.user-profile-link');
+                if (userProfileLink) {
+                    userProfileLink.onclick = function() {
+                        const username = this.getAttribute('data-username');
+                        if (username) {
+                            showUserProfile(username);
                         }
                     };
                 }
