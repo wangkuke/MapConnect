@@ -6,7 +6,7 @@
 // 检查全局API_CONFIG是否已存在，如果不存在则创建
 if (typeof window.API_CONFIG === 'undefined') {
     window.API_CONFIG = {
-        BASE_URL: 'https://api.9696mm.club'
+        BASE_URL: 'https://user-api.532736720.workers.dev'
     };
 }
 
