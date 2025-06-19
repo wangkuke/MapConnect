@@ -475,8 +475,11 @@
     </div>
 
     <script>
-        // 新的自定义域名 API 地址
-        const API_BASE_URL = 'https://api.9696mm.club';
+        // 检查变量是否已存在，如果不存在才声明
+        if (typeof API_BASE_URL === 'undefined') {
+            // 新的自定义域名 API 地址
+            const API_BASE_URL = 'https://api.9696mm.club';
+        }
 
         // 初始化地图
         const map = L.map('map').setView([31.2304, 121.4737], 13);
