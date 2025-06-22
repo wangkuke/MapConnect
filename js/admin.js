@@ -2,15 +2,10 @@
 // 版本：2.0
 // 作者：Claude
 
-// 确保API_CONFIG全局变量正确定义
-window.API_CONFIG = window.API_CONFIG || {
-    BASE_URL: 'https://api.9696mm.club'
-};
-
-// 备用地址，如需使用，请取消注释并注释上面的定义
-// window.API_CONFIG = {
-//     BASE_URL: 'https://user-api.532736720.workers.dev'
-// };
+// 检查API服务是否已加载
+if (typeof apiService === 'undefined') {
+    console.error('apiService is not loaded. Make sure api-service.js is included before this script.');
+}
 
 // 管理员登录与数据管理
 const Admin = {
@@ -39,7 +34,7 @@ const Admin = {
     testApiConnection() {
         console.log("正在测试API连接...");
         // 尝试访问健康检查端点或简单的GET端点
-        fetch(`${window.API_CONFIG.BASE_URL}/health`, { 
+        fetch(`${apiService.config.BASE_URL}/health`, { 
             method: 'GET',
             mode: 'cors',
             headers: { 'Content-Type': 'application/json' }
@@ -50,7 +45,7 @@ const Admin = {
                 return res.text();
             } else {
                 // 如果health端点不存在，尝试根路径
-                return fetch(`${window.API_CONFIG.BASE_URL}/`, { 
+                return fetch(`${apiService.config.BASE_URL}/`, { 
                     method: 'GET',
                     mode: 'cors'
                 }).then(rootRes => {
@@ -80,7 +75,7 @@ const Admin = {
                 
                 const errorMsg = document.createElement('div');
                 errorMsg.className = 'alert alert-warning mt-3';
-                errorMsg.innerHTML = `<strong>警告:</strong> 无法连接到API服务器 (${window.API_CONFIG.BASE_URL})。<br>原因: ${err.message || '未知错误'}<br>请检查网络连接或联系管理员。`;
+                errorMsg.innerHTML = `<strong>警告:</strong> 无法连接到API服务器 (${apiService.config.BASE_URL})。<br>原因: ${err.message || '未知错误'}<br>请检查网络连接或联系管理员。`;
                 loginForm.appendChild(errorMsg);
             }
         });
@@ -182,7 +177,7 @@ const Admin = {
         
         if (!username || !password) return alert('请输入用户名和密码');
         
-        console.log('即将发送登录请求到:', `${window.API_CONFIG.BASE_URL}/login`);
+        console.log('即将发送登录请求到:', `${apiService.config.BASE_URL}/login`);
         
         // 显示登录中状态
         const loginBtn = document.getElementById('login-btn');
@@ -190,20 +185,26 @@ const Admin = {
         loginBtn.disabled = true;
         loginBtn.textContent = '登录中...';
         
-        // 先尝试检查API连接
-        this.checkApiAvailability()
-            .then(apiAvailable => {
-                if (apiAvailable) {
-                    // API可用，使用正常登录流程
-                    return this.normalLogin(username, password);
-                } else {
-                    // API不可用，尝试备用登录方式
-                    return this.fallbackLogin(username, password);
+        // 使用apiService进行登录
+        apiService.login(username, password)
+            .then(data => {
+                console.log('登录成功，用户数据:', data);
+                const user = data.user;
+                if (!user || user.role !== 'admin') {
+                    throw new Error('非管理员用户或用户角色未定义');
                 }
+                sessionStorage.setItem('mapconnect_currentAdmin', JSON.stringify(user));
+                this.state.currentAdmin = user;
+                this.showAdminPanel();
             })
             .catch(error => {
                 console.error('登录失败:', error);
                 alert(`登录失败: ${error.message || '请检查网络连接和服务器状态'}`);
+                
+                // 如果是认证错误，尝试备用登录
+                if (error.message && error.message.includes('认证失败') && username === 'admin') {
+                    this.fallbackLogin(username, password);
+                }
             })
             .finally(() => {
                 // 恢复按钮状态
@@ -213,44 +214,20 @@ const Admin = {
     },
     
     checkApiAvailability() {
-        return fetch(`${window.API_CONFIG.BASE_URL}/health`, { 
-            method: 'GET',
-            mode: 'cors',
-            headers: { 'Content-Type': 'application/json' }
-        })
-        .then(res => {
-            return res.ok;
-        })
-        .catch(() => {
-            return false; // API不可用
-        });
+        return apiService.checkAvailability();
     },
     
     normalLogin(username, password) {
-        return fetch(`${window.API_CONFIG.BASE_URL}/login`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ username, password })
-        })
-        .then(res => {
-            console.log('登录响应状态:', res.status);
-            if (!res.ok) {
-                return res.json().then(err => {
-                    throw new Error(err.error || err.message || `服务器返回错误: ${res.status}`);
-                });
-            }
-            return res.json();
-        })
-        .then(data => {
-            console.log('登录成功，用户数据:', data);
-            const user = data.user;
-            if (!user || user.role !== 'admin') {
-                throw new Error('非管理员用户或用户角色未定义');
-            }
-            sessionStorage.setItem('mapconnect_currentAdmin', JSON.stringify(user));
-            this.state.currentAdmin = user;
-            this.showAdminPanel();
-        });
+        return apiService.login(username, password)
+            .then(data => {
+                const user = data.user;
+                if (!user || user.role !== 'admin') {
+                    throw new Error('非管理员用户或用户角色未定义');
+                }
+                sessionStorage.setItem('mapconnect_currentAdmin', JSON.stringify(user));
+                this.state.currentAdmin = user;
+                this.showAdminPanel();
+            });
     },
     
     fallbackLogin(username, password) {
@@ -311,9 +288,30 @@ const Admin = {
             return;
         }
         
-        this.fetchStats();
-        this.fetchMarkers();
-        this.fetchUsers();
+        // 使用apiService获取数据
+        Promise.all([
+            apiService.getStats(),
+            apiService.getAllMarkers(),
+            apiService.getAllUsers()
+        ])
+        .then(([stats, markers, users]) => {
+            this.state.stats = stats;
+            this.state.markers = markers;
+            this.state.users = users;
+            
+            this.updateStats();
+            this.renderTable();
+            this.renderUsersTable();
+        })
+        .catch(err => {
+            console.error('获取数据失败:', err);
+            alert(`获取数据失败: ${err.message}`);
+            
+            // 如果API调用失败，尝试使用模拟数据
+            if (confirm('无法从服务器获取数据。是否使用离线模式？')) {
+                this.loadMockData();
+            }
+        });
     },
 
     isOfflineMode() {
@@ -323,105 +321,24 @@ const Admin = {
     },
     
     loadMockData() {
-        // 加载模拟数据
-        this.state.stats = {
-            total_markers: 5,
-            total_users: 3,
-            daily_new_markers: 1
-        };
-        
-        this.state.markers = [
-            {
-                id: 1,
-                title: '示例标注1',
-                marker_type: 'personal',
-                user_username: 'user1',
-                contact: '13800138000',
-                created_at: new Date().toISOString(),
-                visibility: 'today',
-                status: 'active',
-                description: '这是一个示例标注'
-            },
-            {
-                id: 2,
-                title: '示例标注2',
-                marker_type: 'business',
-                user_username: 'user2',
-                contact: '13900139000',
-                created_at: new Date().toISOString(),
-                visibility: 'three_days',
-                status: 'inactive',
-                description: '这是另一个示例标注'
-            }
-        ];
-        
-        this.state.users = [
-            {
-                id: 1,
-                username: 'admin',
-                email: 'admin@example.com',
-                role: 'admin',
-                created_at: new Date().toISOString()
-            },
-            {
-                id: 2,
-                username: 'user1',
-                email: 'user1@example.com',
-                role: 'user',
-                created_at: new Date().toISOString()
-            },
-            {
-                id: 3,
-                username: 'user2',
-                email: 'user2@example.com',
-                role: 'user',
-                created_at: new Date().toISOString()
-            }
-        ];
-        
-        // 更新UI
-        this.updateStats();
-        this.renderTable();
-        this.renderUsersTable();
-    },
-
-    fetchStats() {
-        fetch(`${window.API_CONFIG.BASE_URL}/admin/stats`, {
-            headers: { 'X-Admin-Username': encodeURIComponent(this.state.currentAdmin.username) }
-        })
-        .then(res => {
-            if (!res.ok) return res.json().then(err => { throw new Error(err.error || '获取统计数据失败') });
-            return res.json();
-        }).then(stats => {
+        // 使用apiService的模拟数据
+        Promise.all([
+            apiService.getMockData('stats'),
+            apiService.getMockData('markers'),
+            apiService.getMockData('users')
+        ])
+        .then(([stats, markers, users]) => {
             this.state.stats = stats;
-            this.updateStats();
-        }).catch(err => alert(err.message));
-    },
-    
-    fetchMarkers() {
-        fetch(`${window.API_CONFIG.BASE_URL}/admin/all-markers`, {
-            headers: { 'X-Admin-Username': encodeURIComponent(this.state.currentAdmin.username) }
-        })
-        .then(res => {
-            if (!res.ok) return res.json().then(err => { throw new Error(err.error || '获取标注失败') });
-            return res.json();
-        }).then(markers => {
             this.state.markers = markers;
-            this.renderTable();
-        }).catch(err => alert(err.message));
-    },
-
-    fetchUsers() {
-        fetch(`${window.API_CONFIG.BASE_URL}/admin/users`, {
-            headers: { 'X-Admin-Username': encodeURIComponent(this.state.currentAdmin.username) }
-        })
-        .then(res => {
-            if (!res.ok) return res.json().then(err => { throw new Error(err.error || '获取用户失败') });
-            return res.json();
-        }).then(users => {
             this.state.users = users;
+            
+            this.updateStats();
+            this.renderTable();
             this.renderUsersTable();
-        }).catch(err => alert(err.message));
+            
+            // 显示离线模式提示
+            alert('系统当前处于离线模式，显示的是模拟数据。');
+        });
     },
 
     updateStats() {
@@ -548,27 +465,16 @@ const Admin = {
             status: document.getElementById('edit-marker-status').value,
         };
 
-        fetch(`${window.API_CONFIG.BASE_URL}/admin/markers/${markerId}`, {
-            method: 'PUT',
-            headers: {
-                'Content-Type': 'application/json',
-                'X-Admin-Username': encodeURIComponent(this.state.currentAdmin.username)
-            },
-            body: JSON.stringify(updatedData)
-        })
-        .then(res => {
-            if (!res.ok) throw new Error('更新失败');
-            return res.json();
-        })
-        .then(() => {
-            alert(`标注 #${markerId} 更新成功！`);
-            const modal = bootstrap.Modal.getInstance(document.getElementById('editMarkerModal'));
-            if (modal) modal.hide();
-            this.fetchData();
-        })
-        .catch(err => {
-            alert(err.message);
-        });
+        apiService.updateMarker(markerId, updatedData)
+            .then(() => {
+                alert(`标注 #${markerId} 更新成功！`);
+                const modal = bootstrap.Modal.getInstance(document.getElementById('editMarkerModal'));
+                if (modal) modal.hide();
+                this.fetchData();
+            })
+            .catch(err => {
+                alert(`更新失败: ${err.message}`);
+            });
     },
 
     updateUser() {
@@ -579,56 +485,34 @@ const Admin = {
             role: document.getElementById('edit-user-role').value,
         };
 
-        fetch(`${window.API_CONFIG.BASE_URL}/admin/users/${userId}`, {
-            method: 'PUT',
-            headers: {
-                'Content-Type': 'application/json',
-                'X-Admin-Username': encodeURIComponent(this.state.currentAdmin.username)
-            },
-            body: JSON.stringify(updatedData)
-        })
-        .then(res => {
-            if (!res.ok) return res.json().then(err => { throw new Error(err.error || '更新失败') });
-            return res.json();
-        })
-        .then(() => {
-            alert(`用户 #${userId} 更新成功！`);
-            const modal = bootstrap.Modal.getInstance(document.getElementById('editUserModal'));
-            if (modal) modal.hide();
-            this.fetchUsers(); // 只更新用户数据，其他数据保持不变
-        })
-        .catch(err => {
-            alert(err.message);
-        });
+        apiService.updateUser(userId, updatedData)
+            .then(() => {
+                alert(`用户 #${userId} 更新成功！`);
+                const modal = bootstrap.Modal.getInstance(document.getElementById('editUserModal'));
+                if (modal) modal.hide();
+                this.fetchData(); // 更新所有数据
+            })
+            .catch(err => {
+                alert(`更新失败: ${err.message}`);
+            });
     },
 
     deleteMarker(markerId) {
-        fetch(`${window.API_CONFIG.BASE_URL}/admin/markers/${markerId}`, {
-            method: 'DELETE',
-            headers: { 'X-Admin-Username': encodeURIComponent(this.state.currentAdmin.username) }
-        })
-        .then(res => {
-            if (!res.ok) throw new Error('删除失败');
-            this.fetchData();
-            alert(`标注 #${markerId} 已成功删除`);
-        })
-        .catch(err => alert(err.message));
+        apiService.deleteMarker(markerId)
+            .then(() => {
+                this.fetchData();
+                alert(`标注 #${markerId} 已成功删除`);
+            })
+            .catch(err => alert(`删除失败: ${err.message}`));
     },
 
     deleteUser(userId) {
-        fetch(`${window.API_CONFIG.BASE_URL}/admin/users/${userId}`, {
-            method: 'DELETE',
-            headers: { 'X-Admin-Username': encodeURIComponent(this.state.currentAdmin.username) }
-        })
-        .then(res => {
-            if (!res.ok) return res.json().then(err => { throw new Error(err.error || '删除失败') });
-            return res.json();
-        })
-        .then(data => {
-            this.fetchData(); // 重新获取所有数据，因为用户删除会影响标注和统计
-            alert(data.message || `用户 #${userId} 已成功删除`);
-        })
-        .catch(err => alert(err.message));
+        apiService.deleteUser(userId)
+            .then(data => {
+                this.fetchData(); // 重新获取所有数据，因为用户删除会影响标注和统计
+                alert(data.message || `用户 #${userId} 已成功删除`);
+            })
+            .catch(err => alert(`删除失败: ${err.message}`));
     }
 };
 
