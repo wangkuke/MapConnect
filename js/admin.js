@@ -1,13 +1,11 @@
 // 地图标注系统 - 管理员后台脚本
-// 版本：2.0
+// 版本：2.2
 // 作者：Claude
 
-// 检查API服务是否已加载
 if (typeof apiService === 'undefined') {
-    console.error('apiService is not loaded. Make sure api-service.js is included before this script.');
+    throw new Error('apiService is not loaded. Make sure api-service.js is included before this script.');
 }
 
-// 管理员登录与数据管理
 const Admin = {
     state: {
         currentAdmin: null,
@@ -24,61 +22,9 @@ const Admin = {
     },
 
     init() {
-        // 从 sessionStorage 恢复登录状态
-        this.state.currentAdmin = JSON.parse(sessionStorage.getItem('mapconnect_currentAdmin'));
+        this.state.currentAdmin = apiService.state.currentUser;
         this.checkLoginStatus();
         this.attachEventListeners();
-        this.testApiConnection();
-    },
-
-    testApiConnection() {
-        console.log("正在测试API连接...");
-        // 尝试访问健康检查端点或简单的GET端点
-        fetch(`${apiService.config.BASE_URL}/health`, { 
-            method: 'GET',
-            mode: 'cors',
-            headers: { 'Content-Type': 'application/json' }
-        })
-        .then(res => {
-            if (res.ok) {
-                console.log("✅ API连接成功，服务器响应正常");
-                return res.text();
-            } else {
-                // 如果health端点不存在，尝试根路径
-                return fetch(`${apiService.config.BASE_URL}/`, { 
-                    method: 'GET',
-                    mode: 'cors'
-                }).then(rootRes => {
-                    if (rootRes.ok) {
-                        console.log("✅ API连接成功，服务器响应正常");
-                        return rootRes.text();
-                    } else {
-                        console.warn(`⚠️ API服务器连接成功，但响应状态码异常: ${rootRes.status}`);
-                        throw new Error(`服务器返回${rootRes.status}`);
-                    }
-                });
-            }
-        })
-        .then(data => {
-            console.log("服务器返回数据:", data);
-        })
-        .catch(err => {
-            console.error("❌ API连接失败:", err);
-            // 添加在登录表单下方显示错误信息
-            const loginForm = document.querySelector('.login-body');
-            if (loginForm) {
-                // 检查是否已经有错误消息
-                const existingError = loginForm.querySelector('.alert-warning');
-                if (existingError) {
-                    existingError.remove();
-                }
-                
-                const errorMsg = document.createElement('div');
-                errorMsg.className = 'alert alert-warning mt-3';
-                errorMsg.innerHTML = `<strong>警告:</strong> 无法连接到API服务器 (${apiService.config.BASE_URL})。<br>原因: ${err.message || '未知错误'}<br>请检查网络连接或联系管理员。`;
-                loginForm.appendChild(errorMsg);
-            }
-        });
     },
 
     checkLoginStatus() {
@@ -115,58 +61,43 @@ const Admin = {
     },
 
     attachEventListeners() {
-        // 登录按钮事件
         document.getElementById('login-btn').addEventListener('click', () => this.login());
         document.getElementById('admin-password').addEventListener('keypress', (e) => {
             if (e.key === 'Enter') this.login();
         });
 
-        // 管理面板事件委托
         document.getElementById('adminPanel').addEventListener('click', (e) => {
-            // 登出按钮
-            if (e.target.closest('#logout-btn')) {
+            const target = e.target;
+            if (target.closest('#logout-btn')) {
                 this.logout();
+                return;
             }
             
-            // 页面切换
-            const pageButton = e.target.closest('.menu-item[data-page]');
-            if (pageButton && !pageButton.id) { // 排除登出按钮
+            const pageButton = target.closest('.menu-item[data-page]');
+            if (pageButton && !pageButton.id) {
                 this.switchPage(pageButton.dataset.page);
+                return;
             }
 
-            // 标注操作
-            const editMarkerButton = e.target.closest('.action-btn.edit-marker');
-            if (editMarkerButton) {
-                const markerId = editMarkerButton.closest('tr').dataset.id;
-                this.populateEditModal(markerId);
-            }
+            const actionButton = target.closest('.action-btn');
+            if (!actionButton) return;
             
-            const deleteMarkerButton = e.target.closest('.action-btn.delete-marker');
-            if (deleteMarkerButton) {
-                const markerId = deleteMarkerButton.closest('tr').dataset.id;
-                if (confirm(`确定要删除ID为 ${markerId} 的标注吗？`)) {
-                    this.deleteMarker(markerId);
-                }
-            }
+            const row = actionButton.closest('tr');
+            if (!row) return;
 
-            // 用户操作
-            const editUserButton = e.target.closest('.action-btn.edit-user');
-            if (editUserButton) {
-                const userId = editUserButton.closest('tr').dataset.id;
-                this.populateUserEditModal(userId);
-            }
+            const id = row.dataset.id;
+            const username = row.dataset.username;
 
-            const deleteUserButton = e.target.closest('.action-btn.delete-user');
-            if (deleteUserButton) {
-                const userId = deleteUserButton.closest('tr').dataset.id;
-                const username = deleteUserButton.closest('tr').dataset.username;
-                if (confirm(`确定要删除用户 ${username} (ID: ${userId}) 吗？\n警告：该用户的所有标注也将被一并删除！`)) {
-                    this.deleteUser(userId);
-                }
+            if (actionButton.classList.contains('edit-marker')) this.populateEditModal(id);
+            else if (actionButton.classList.contains('delete-marker')) {
+                if (confirm(`确定要删除ID为 ${id} 的标注吗？`)) this.deleteMarker(id);
+            } 
+            else if (actionButton.classList.contains('edit-user')) this.populateUserEditModal(id);
+            else if (actionButton.classList.contains('delete-user')) {
+                if (confirm(`确定要删除用户 ${username} (ID: ${id}) 吗？\n警告：该用户的所有标注也将被一并删除！`)) this.deleteUser(id);
             }
         });
         
-        // 保存更改按钮
         document.getElementById('save-marker-changes-btn').addEventListener('click', () => this.updateMarker());
         document.getElementById('save-user-changes-btn').addEventListener('click', () => this.updateUser());
     },
@@ -177,88 +108,29 @@ const Admin = {
         
         if (!username || !password) return alert('请输入用户名和密码');
         
-        console.log('即将发送登录请求到:', `${apiService.config.BASE_URL}/login`);
-        
-        // 显示登录中状态
         const loginBtn = document.getElementById('login-btn');
         const originalText = loginBtn.textContent;
         loginBtn.disabled = true;
         loginBtn.textContent = '登录中...';
         
-        // 使用apiService进行登录
         apiService.login(username, password)
             .then(data => {
-                console.log('登录成功，用户数据:', data);
                 const user = data.user;
-                if (!user || user.role !== 'admin') {
-                    throw new Error('非管理员用户或用户角色未定义');
-                }
-                sessionStorage.setItem('mapconnect_currentAdmin', JSON.stringify(user));
+                if (!user || user.role !== 'admin') throw new Error('非管理员用户或用户角色未定义');
                 this.state.currentAdmin = user;
                 this.showAdminPanel();
             })
             .catch(error => {
-                console.error('登录失败:', error);
-                alert(`登录失败: ${error.message || '请检查网络连接和服务器状态'}`);
-                
-                // 如果是认证错误，尝试备用登录
-                if (error.message && error.message.includes('认证失败') && username === 'admin') {
-                    this.fallbackLogin(username, password);
-                }
+                alert(`登录失败: ${error.message}`);
             })
             .finally(() => {
-                // 恢复按钮状态
                 loginBtn.disabled = false;
                 loginBtn.textContent = originalText;
             });
     },
-    
-    checkApiAvailability() {
-        return apiService.checkAvailability();
-    },
-    
-    normalLogin(username, password) {
-        return apiService.login(username, password)
-            .then(data => {
-                const user = data.user;
-                if (!user || user.role !== 'admin') {
-                    throw new Error('非管理员用户或用户角色未定义');
-                }
-                sessionStorage.setItem('mapconnect_currentAdmin', JSON.stringify(user));
-                this.state.currentAdmin = user;
-                this.showAdminPanel();
-            });
-    },
-    
-    fallbackLogin(username, password) {
-        console.log('尝试使用备用登录方式');
-        // 检查是否是已知的管理员账号
-        if (username === 'admin' && password === 'admin123') {
-            // 创建一个模拟的管理员用户对象
-            const mockAdminUser = {
-                id: 1,
-                username: 'admin',
-                role: 'admin',
-                created_at: new Date().toISOString()
-            };
-            
-            sessionStorage.setItem('mapconnect_currentAdmin', JSON.stringify(mockAdminUser));
-            this.state.currentAdmin = mockAdminUser;
-            this.showAdminPanel();
-            
-            // 显示离线模式提示
-            setTimeout(() => {
-                alert('您已在离线模式下登录。部分功能可能不可用。');
-            }, 500);
-            
-            return Promise.resolve();
-        } else {
-            return Promise.reject(new Error('API服务器不可用，且备用登录凭据无效'));
-        }
-    },
 
     logout() {
-        sessionStorage.removeItem('mapconnect_currentAdmin');
+        apiService.logout();
         this.state.currentAdmin = null;
         this.showLoginPage();
     },
@@ -271,24 +143,19 @@ const Admin = {
         const targetMenu = document.querySelector(`.menu-item[data-page="${page}"]`);
         
         if (targetPage) targetPage.style.display = 'block';
-        // 仪表盘是一组统计信息，而不是特定的页面div
+
+        const statsContainer = document.querySelector('.stats-container');
         if (page === 'dashboard') {
-            document.querySelector('.stats-container').style.display = 'grid';
+            statsContainer.style.display = 'grid';
+            if (!this.state.markers || !this.state.markers.length) this.fetchData();
         } else {
-            document.querySelector('.stats-container').style.display = 'none';
+            statsContainer.style.display = 'none';
         }
+
         if (targetMenu) targetMenu.classList.add('active');
     },
 
     fetchData() {
-        // 检查是否处于离线模式
-        if (this.isOfflineMode()) {
-            console.log('系统处于离线模式，加载模拟数据');
-            this.loadMockData();
-            return;
-        }
-        
-        // 使用apiService获取数据
         Promise.all([
             apiService.getStats(),
             apiService.getAllMarkers(),
@@ -304,24 +171,12 @@ const Admin = {
             this.renderUsersTable();
         })
         .catch(err => {
-            console.error('获取数据失败:', err);
             alert(`获取数据失败: ${err.message}`);
-            
-            // 如果API调用失败，尝试使用模拟数据
-            if (confirm('无法从服务器获取数据。是否使用离线模式？')) {
-                this.loadMockData();
-            }
+            if (confirm('是否切换到离线模式并使用模拟数据？')) this.loadMockData();
         });
-    },
-
-    isOfflineMode() {
-        // 检查是否是使用备用登录方式登录的
-        const admin = this.state.currentAdmin;
-        return admin && admin.username === 'admin' && !admin.token;
     },
     
     loadMockData() {
-        // 使用apiService的模拟数据
         Promise.all([
             apiService.getMockData('stats'),
             apiService.getMockData('markers'),
@@ -331,25 +186,26 @@ const Admin = {
             this.state.stats = stats;
             this.state.markers = markers;
             this.state.users = users;
-            
             this.updateStats();
             this.renderTable();
             this.renderUsersTable();
-            
-            // 显示离线模式提示
             alert('系统当前处于离线模式，显示的是模拟数据。');
         });
     },
 
     updateStats() {
-        document.getElementById('total-markers').textContent = this.state.stats.total_markers;
-        document.getElementById('total-users').textContent = this.state.stats.total_users;
+        document.getElementById('total-markers').textContent = this.state.stats.total_markers || 0;
+        document.getElementById('total-users').textContent = this.state.stats.total_users || 0;
         document.getElementById('daily-new-markers').textContent = this.state.stats.daily_new_markers || 0;
     },
 
     renderTable() {
         const tableBody = document.getElementById('markers-table-body');
         tableBody.innerHTML = '';
+        if (!this.state.markers || !this.state.markers.length) {
+            tableBody.innerHTML = `<tr><td colspan="9" class="text-center">没有找到标注数据</td></tr>`;
+            return;
+        }
         
         this.state.markers.forEach(marker => {
             const row = document.createElement('tr');
@@ -357,30 +213,21 @@ const Admin = {
             const statusClass = marker.status === 'active' ? 'active' : 'inactive';
             const statusText = marker.status === 'active' ? '正常' : '已关闭';
             const typeText = this.typeMap[marker.marker_type] || marker.marker_type;
-            
-            // 可见时间映射
-            const visibilityMap = {
-                'today': '一日',
-                'three_days': '三日'
-            };
+            const visibilityMap = { 'today': '一日', 'three_days': '三日' };
             const visibilityText = visibilityMap[marker.visibility] || marker.visibility;
             
             row.innerHTML = `
                 <td>#${marker.id}</td>
                 <td>${marker.title}</td>
                 <td>${typeText}</td>
-                <td>${marker.user_username}</td>
+                <td>${marker.user_username || 'N/A'}</td>
                 <td>${marker.contact || '未提供'}</td>
                 <td>${new Date(marker.created_at).toLocaleString()}</td>
                 <td>${visibilityText}</td>
                 <td><span class="status ${statusClass}">${statusText}</span></td>
                 <td>
-                    <button class="action-btn edit edit-marker" data-bs-toggle="modal" data-bs-target="#editMarkerModal">
-                        <i class="fas fa-edit"></i>
-                    </button>
-                    <button class="action-btn delete delete-marker">
-                        <i class="fas fa-trash"></i>
-                    </button>
+                    <button class="action-btn edit edit-marker" data-bs-toggle="modal" data-bs-target="#editMarkerModal"><i class="fas fa-edit"></i></button>
+                    <button class="action-btn delete delete-marker"><i class="fas fa-trash"></i></button>
                 </td>
             `;
             tableBody.appendChild(row);
@@ -392,6 +239,10 @@ const Admin = {
         if (!tableBody) return;
 
         tableBody.innerHTML = '';
+        if (!this.state.users || !this.state.users.length) {
+            tableBody.innerHTML = `<tr><td colspan="7" class="text-center">没有找到用户数据</td></tr>`;
+            return;
+        }
 
         this.state.users.forEach(user => {
             const row = document.createElement('tr');
@@ -410,12 +261,8 @@ const Admin = {
                 <td><span class="role ${user.role}">${user.role}</span></td>
                 <td>${new Date(user.created_at).toLocaleString()}</td>
                 <td>
-                    <button class="action-btn edit edit-user" data-bs-toggle="modal" data-bs-target="#editUserModal">
-                        <i class="fas fa-user-edit"></i>
-                    </button>
-                    <button class="action-btn delete delete-user">
-                        <i class="fas fa-user-times"></i>
-                    </button>
+                    <button class="action-btn edit edit-user" data-bs-toggle="modal" data-bs-target="#editUserModal"><i class="fas fa-user-edit"></i></button>
+                    <button class="action-btn delete delete-user"><i class="fas fa-user-times"></i></button>
                 </td>
             `;
             tableBody.appendChild(row);
@@ -430,16 +277,7 @@ const Admin = {
         document.getElementById('edit-marker-title').value = marker.title;
         document.getElementById('edit-marker-description').value = marker.description;
         document.getElementById('edit-marker-contact').value = marker.contact || '';
-        
-        const typeSelect = document.getElementById('edit-marker-type');
-        const optionExists = Array.from(typeSelect.options).some(opt => opt.value === marker.marker_type);
-
-        if (!optionExists && marker.marker_type) {
-            const newOption = new Option(marker.marker_type, marker.marker_type, true, true);
-            typeSelect.add(newOption);
-        }
-        typeSelect.value = marker.marker_type;
-
+        document.getElementById('edit-marker-type').value = marker.marker_type;
         document.getElementById('edit-marker-visibility').value = marker.visibility;
         document.getElementById('edit-marker-status').value = marker.status;
     },
@@ -449,7 +287,7 @@ const Admin = {
         if (!user) return;
 
         document.getElementById('edit-user-id').value = user.id;
-        document.getElementById('edit-user-name').value = user.name || '';
+        document.getElementById('edit-user-name').value = user.username || '';
         document.getElementById('edit-user-contact').value = user.contact || '';
         document.getElementById('edit-user-role').value = user.role;
     },
@@ -468,19 +306,16 @@ const Admin = {
         apiService.updateMarker(markerId, updatedData)
             .then(() => {
                 alert(`标注 #${markerId} 更新成功！`);
-                const modal = bootstrap.Modal.getInstance(document.getElementById('editMarkerModal'));
-                if (modal) modal.hide();
+                bootstrap.Modal.getInstance(document.getElementById('editMarkerModal'))?.hide();
                 this.fetchData();
             })
-            .catch(err => {
-                alert(`更新失败: ${err.message}`);
-            });
+            .catch(err => alert(`更新失败: ${err.message}`));
     },
 
     updateUser() {
         const userId = document.getElementById('edit-user-id').value;
         const updatedData = {
-            name: document.getElementById('edit-user-name').value,
+            username: document.getElementById('edit-user-name').value,
             contact: document.getElementById('edit-user-contact').value,
             role: document.getElementById('edit-user-role').value,
         };
@@ -488,20 +323,17 @@ const Admin = {
         apiService.updateUser(userId, updatedData)
             .then(() => {
                 alert(`用户 #${userId} 更新成功！`);
-                const modal = bootstrap.Modal.getInstance(document.getElementById('editUserModal'));
-                if (modal) modal.hide();
-                this.fetchData(); // 更新所有数据
+                bootstrap.Modal.getInstance(document.getElementById('editUserModal'))?.hide();
+                this.fetchData();
             })
-            .catch(err => {
-                alert(`更新失败: ${err.message}`);
-            });
+            .catch(err => alert(`更新失败: ${err.message}`));
     },
 
     deleteMarker(markerId) {
         apiService.deleteMarker(markerId)
             .then(() => {
-                this.fetchData();
                 alert(`标注 #${markerId} 已成功删除`);
+                this.fetchData();
             })
             .catch(err => alert(`删除失败: ${err.message}`));
     },
@@ -509,12 +341,11 @@ const Admin = {
     deleteUser(userId) {
         apiService.deleteUser(userId)
             .then(data => {
-                this.fetchData(); // 重新获取所有数据，因为用户删除会影响标注和统计
                 alert(data.message || `用户 #${userId} 已成功删除`);
+                this.fetchData();
             })
             .catch(err => alert(`删除失败: ${err.message}`));
     }
 };
 
-// 初始化应用
-document.addEventListener('DOMContentLoaded', () => Admin.init()); 
+document.addEventListener('DOMContentLoaded', () => Admin.init());
