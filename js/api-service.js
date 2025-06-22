@@ -144,188 +144,147 @@ const apiService = {
 };
 
 // 地图标注系统 - 管理员API服务
-// 版本：1.1
+// 版本：1.2
 // 作者：Claude
 
-// API服务对象
-window.apiService = {
-    // API配置
-    config: {
-        BASE_URL: 'https://api.9696mm.club',
-        FALLBACK_URL: 'https://user-api.532736720.workers.dev'
-    },
-    
-    // 当前状态
-    state: {
-        isOnline: true,
-        lastError: null,
-        currentUser: null
-    },
-    
-    // 初始化
-    init() {
-        console.log('API Service v1.1 初始化中...');
-        // 尝试从sessionStorage恢复会话
-        this.restoreSession();
-        // 异步检查API可用性，不阻塞后续操作
-        this.checkAvailability();
-    },
-    
-    // 恢复会话
-    restoreSession() {
-        try {
-            const savedUser = sessionStorage.getItem('mapconnect_currentAdmin');
-            if (savedUser) {
-                this.state.currentUser = JSON.parse(savedUser);
-                console.log('已恢复管理员会话:', this.state.currentUser.username);
-            }
-        } catch (err) {
-            console.error('恢复会话失败:', err);
-        }
-    },
-    
-    // 检查API可用性
-    checkAvailability() {
-        return fetch(`${this.config.BASE_URL}/health`, {
-            method: 'GET',
-            mode: 'cors',
-            cache: 'no-cache'
-        })
-        .then(res => {
-            this.state.isOnline = res.ok;
-            console.log(`API状态: ${this.state.isOnline ? '在线' : '离线'}`);
-            return res.ok;
-        })
-        .catch(err => {
-            console.warn('API连接失败:', err);
-            this.state.isOnline = false;
-            this.state.lastError = err.message;
-            return false;
-        });
-    },
-    
-    // 登录
-    login(username, password) {
-        return this.request('/login', {
-            method: 'POST',
-            body: { username, password }
-        }).then(data => {
-            // 登录成功后，更新当前用户状态
-            if (data.user && data.user.role === 'admin') {
-                this.state.currentUser = data.user;
-                sessionStorage.setItem('mapconnect_currentAdmin', JSON.stringify(data.user));
-            }
-            return data;
-        });
-    },
-    
-    // 登出
-    logout() {
-        this.state.currentUser = null;
-        sessionStorage.removeItem('mapconnect_currentAdmin');
-    },
+(function() {
+    'use strict';
 
-    // 获取所有标注
-    getAllMarkers() {
-        return this.request('/admin/all-markers');
-    },
-    
-    // 获取所有用户
-    getAllUsers() {
-        return this.request('/admin/users');
-    },
-    
-    // 获取统计数据
-    getStats() {
-        return this.request('/admin/stats');
-    },
-    
-    // 更新标注
-    updateMarker(id, data) {
-        return this.request(`/admin/markers/${id}`, {
-            method: 'PUT',
-            body: data
-        });
-    },
-    
-    // 删除标注
-    deleteMarker(id) {
-        return this.request(`/admin/markers/${id}`, {
-            method: 'DELETE'
-        });
-    },
-    
-    // 更新用户
-    updateUser(id, data) {
-        return this.request(`/admin/users/${id}`, {
-            method: 'PUT',
-            body: data
-        });
-    },
-    
-    // 删除用户
-    deleteUser(id) {
-        return this.request(`/admin/users/${id}`, {
-            method: 'DELETE'
-        });
-    },
-    
-    // 通用请求方法
-    request(endpoint, options = {}) {
-        if (!this.state.isOnline && !options.forceOnline) {
-            return Promise.reject(new Error('API服务器当前不可用'));
-        }
+    // API服务对象
+    const apiService = {
+        // API配置
+        config: {
+            BASE_URL: 'https://api.9696mm.club',
+            FALLBACK_URL: 'https://user-api.532736720.workers.dev'
+        },
         
-        const url = `${this.config.BASE_URL}${endpoint}`;
-        const fetchOptions = {
-            method: options.method || 'GET',
-            headers: {
-                'Content-Type': 'application/json',
-                ...options.headers
-            },
-            mode: 'cors',
-            cache: 'no-cache'
-        };
+        // 当前状态
+        state: {
+            isOnline: true,
+            lastError: null,
+            currentUser: null
+        },
         
-        // 登录请求不需要认证头，其他请求需要
-        if (endpoint !== '/login' && this.state.currentUser) {
-            fetchOptions.headers['X-Admin-Username'] = encodeURIComponent(this.state.currentUser.username);
-        }
+        // 初始化
+        init() {
+            console.log('API Service v1.2 初始化中...');
+            this.restoreSession();
+            this.checkAvailability();
+        },
         
-        if (options.body) {
-            fetchOptions.body = JSON.stringify(options.body);
-        }
+        // 恢复会话
+        restoreSession() {
+            try {
+                const savedUser = sessionStorage.getItem('mapconnect_currentAdmin');
+                if (savedUser) {
+                    this.state.currentUser = JSON.parse(savedUser);
+                    console.log('已恢复管理员会话:', this.state.currentUser.username);
+                }
+            } catch (err) {
+                console.error('恢复会话失败:', err);
+            }
+        },
         
-        return fetch(url, fetchOptions)
-            .then(async res => {
+        // 检查API可用性
+        checkAvailability() {
+            return fetch(`${this.config.BASE_URL}/health`, { method: 'GET', mode: 'cors', cache: 'no-cache' })
+                .then(res => {
+                    this.state.isOnline = res.ok;
+                    console.log(`API状态: ${this.state.isOnline ? '在线' : '离线'}`);
+                    return res.ok;
+                })
+                .catch(err => {
+                    console.warn('API连接失败:', err.message);
+                    this.state.isOnline = false;
+                    this.state.lastError = err.message;
+                    return false;
+                });
+        },
+        
+        // 登录
+        login(username, password) {
+            return this.request('/login', {
+                method: 'POST',
+                body: { username, password }
+            }).then(data => {
+                if (data.user && data.user.role === 'admin') {
+                    this.state.currentUser = data.user;
+                    sessionStorage.setItem('mapconnect_currentAdmin', JSON.stringify(data.user));
+                }
+                return data;
+            });
+        },
+        
+        // 登出
+        logout() {
+            this.state.currentUser = null;
+            sessionStorage.removeItem('mapconnect_currentAdmin');
+        },
+
+        // 获取所有标注
+        getAllMarkers: () => apiService.request('/admin/all-markers'),
+        getAllUsers: () => apiService.request('/admin/users'),
+        getStats: () => apiService.request('/admin/stats'),
+        
+        // 更新/删除操作
+        updateMarker: (id, data) => apiService.request(`/admin/markers/${id}`, { method: 'PUT', body: data }),
+        deleteMarker: (id) => apiService.request(`/admin/markers/${id}`, { method: 'DELETE' }),
+        updateUser: (id, data) => apiService.request(`/admin/users/${id}`, { method: 'PUT', body: data }),
+        deleteUser: (id) => apiService.request(`/admin/users/${id}`, { method: 'DELETE' }),
+        
+        // 通用请求方法
+        async request(endpoint, options = {}) {
+            if (!this.state.isOnline && !options.forceOnline) {
+                throw new Error('API服务器当前不可用');
+            }
+            
+            const url = `${this.config.BASE_URL}${endpoint}`;
+            const fetchOptions = {
+                method: options.method || 'GET',
+                headers: { 'Content-Type': 'application/json', ...options.headers },
+                mode: 'cors',
+                cache: 'no-cache'
+            };
+            
+            if (endpoint !== '/login' && this.state.currentUser) {
+                fetchOptions.headers['X-Admin-Username'] = encodeURIComponent(this.state.currentUser.username);
+            }
+            
+            if (options.body) {
+                fetchOptions.body = JSON.stringify(options.body);
+            }
+            
+            try {
+                const res = await fetch(url, fetchOptions);
                 const text = await res.text();
                 const data = text ? JSON.parse(text) : {};
                 
                 if (!res.ok) {
-                    throw new Error(data.error || data.message || `服务器返回错误: ${res.status}`);
+                    throw new Error(data.error || data.message || `服务器错误: ${res.status}`);
                 }
                 return data;
-            })
-            .catch(err => {
+            } catch (err) {
                 this.state.lastError = err.message;
                 console.error(`API请求'${endpoint}'失败:`, err);
-                throw err; // 继续向上抛出错误
-            });
-    },
-    
-    // 获取模拟数据（离线模式）
-    getMockData(type) {
-        const mockData = {
-            stats: { total_markers: 0, total_users: 0, daily_new_markers: 0 },
-            markers: [],
-            users: []
-        };
-        return Promise.resolve(mockData[type] || {});
-    }
-};
+                throw err;
+            }
+        },
+        
+        // 获取模拟数据
+        getMockData(type) {
+            const mockData = {
+                stats: { total_markers: 0, total_users: 0, daily_new_markers: 0 },
+                markers: [],
+                users: []
+            };
+            return Promise.resolve(mockData[type] || {});
+        }
+    };
 
-// 初始化API服务
-document.addEventListener('DOMContentLoaded', () => window.apiService.init());
+    // 将apiService挂载到window对象
+    window.apiService = apiService;
 
-// 导出API服务对象
-window.apiService = apiService;
+    // 初始化API服务
+    document.addEventListener('DOMContentLoaded', () => apiService.init());
+
+})();
