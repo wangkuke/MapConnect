@@ -142,3 +142,227 @@ const apiService = {
      */
     getUserProfile: (username) => apiFetch(`/users/${username}`),
 };
+
+// 地图标注系统 - API服务
+// 版本：1.0
+// 作者：Claude
+
+// API服务对象
+window.apiService = {
+    // API配置
+    config: {
+        BASE_URL: 'https://api.9696mm.club',
+        FALLBACK_URL: 'https://user-api.532736720.workers.dev'
+    },
+    
+    // 当前状态
+    state: {
+        isOnline: true,
+        lastError: null,
+        currentUser: null
+    },
+    
+    // 初始化
+    init() {
+        console.log('API Service 初始化中...');
+        // 尝试从localStorage恢复会话
+        this.restoreSession();
+        // 检查API可用性
+        this.checkAvailability();
+    },
+    
+    // 恢复会话
+    restoreSession() {
+        try {
+            const savedUser = localStorage.getItem('mapconnect_user');
+            if (savedUser) {
+                this.state.currentUser = JSON.parse(savedUser);
+                console.log('已恢复用户会话:', this.state.currentUser.username);
+            }
+        } catch (err) {
+            console.error('恢复会话失败:', err);
+        }
+    },
+    
+    // 检查API可用性
+    checkAvailability() {
+        return fetch(`${this.config.BASE_URL}/health`, {
+            method: 'GET',
+            mode: 'cors',
+            cache: 'no-cache'
+        })
+        .then(res => {
+            this.state.isOnline = res.ok;
+            console.log(`API状态: ${this.state.isOnline ? '在线' : '离线'}`);
+            return res.ok;
+        })
+        .catch(err => {
+            console.warn('API连接失败:', err);
+            this.state.isOnline = false;
+            this.state.lastError = err.message;
+            return false;
+        });
+    },
+    
+    // 登录
+    login(username, password) {
+        return this.request('/login', {
+            method: 'POST',
+            body: { username, password }
+        });
+    },
+    
+    // 获取所有标注
+    getAllMarkers() {
+        return this.request('/admin/all-markers');
+    },
+    
+    // 获取所有用户
+    getAllUsers() {
+        return this.request('/admin/users');
+    },
+    
+    // 获取统计数据
+    getStats() {
+        return this.request('/admin/stats');
+    },
+    
+    // 更新标注
+    updateMarker(id, data) {
+        return this.request(`/admin/markers/${id}`, {
+            method: 'PUT',
+            body: data
+        });
+    },
+    
+    // 删除标注
+    deleteMarker(id) {
+        return this.request(`/admin/markers/${id}`, {
+            method: 'DELETE'
+        });
+    },
+    
+    // 更新用户
+    updateUser(id, data) {
+        return this.request(`/admin/users/${id}`, {
+            method: 'PUT',
+            body: data
+        });
+    },
+    
+    // 删除用户
+    deleteUser(id) {
+        return this.request(`/admin/users/${id}`, {
+            method: 'DELETE'
+        });
+    },
+    
+    // 通用请求方法
+    request(endpoint, options = {}) {
+        // 如果API离线且没有强制使用在线模式
+        if (!this.state.isOnline && !options.forceOnline) {
+            return Promise.reject(new Error('API服务器当前不可用'));
+        }
+        
+        const url = `${this.config.BASE_URL}${endpoint}`;
+        const fetchOptions = {
+            method: options.method || 'GET',
+            headers: {
+                'Content-Type': 'application/json',
+                ...options.headers
+            },
+            mode: 'cors',
+            cache: 'no-cache'
+        };
+        
+        // 添加认证头
+        if (this.state.currentUser) {
+            fetchOptions.headers['X-Admin-Username'] = encodeURIComponent(this.state.currentUser.username);
+        }
+        
+        // 添加请求体
+        if (options.body) {
+            fetchOptions.body = JSON.stringify(options.body);
+        }
+        
+        return fetch(url, fetchOptions)
+            .then(res => {
+                if (!res.ok) {
+                    return res.json().then(err => {
+                        throw new Error(err.error || err.message || `服务器返回错误: ${res.status}`);
+                    });
+                }
+                return res.json();
+            })
+            .catch(err => {
+                this.state.lastError = err.message;
+                throw err;
+            });
+    },
+    
+    // 获取模拟数据（离线模式）
+    getMockData(type) {
+        const mockData = {
+            stats: {
+                total_markers: 5,
+                total_users: 3,
+                daily_new_markers: 1
+            },
+            markers: [
+                {
+                    id: 1,
+                    title: '示例标注1',
+                    marker_type: 'personal',
+                    user_username: 'user1',
+                    contact: '13800138000',
+                    created_at: new Date().toISOString(),
+                    visibility: 'today',
+                    status: 'active',
+                    description: '这是一个示例标注'
+                },
+                {
+                    id: 2,
+                    title: '示例标注2',
+                    marker_type: 'business',
+                    user_username: 'user2',
+                    contact: '13900139000',
+                    created_at: new Date().toISOString(),
+                    visibility: 'three_days',
+                    status: 'inactive',
+                    description: '这是另一个示例标注'
+                }
+            ],
+            users: [
+                {
+                    id: 1,
+                    username: 'admin',
+                    email: 'admin@example.com',
+                    role: 'admin',
+                    created_at: new Date().toISOString()
+                },
+                {
+                    id: 2,
+                    username: 'user1',
+                    email: 'user1@example.com',
+                    role: 'user',
+                    created_at: new Date().toISOString()
+                },
+                {
+                    id: 3,
+                    username: 'user2',
+                    email: 'user2@example.com',
+                    role: 'user',
+                    created_at: new Date().toISOString()
+                }
+            ]
+        };
+        
+        return Promise.resolve(mockData[type] || {});
+    }
+};
+
+// 初始化API服务
+document.addEventListener('DOMContentLoaded', () => window.apiService.init());
+
+// 导出API服务对象
+window.apiService = apiService;
