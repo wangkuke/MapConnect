@@ -143,8 +143,8 @@ const apiService = {
     getUserProfile: (username) => apiFetch(`/users/${username}`),
 };
 
-// 地图标注系统 - API服务
-// 版本：1.0
+// 地图标注系统 - 管理员API服务
+// 版本：1.1
 // 作者：Claude
 
 // API服务对象
@@ -164,20 +164,20 @@ window.apiService = {
     
     // 初始化
     init() {
-        console.log('API Service 初始化中...');
-        // 尝试从localStorage恢复会话
+        console.log('API Service v1.1 初始化中...');
+        // 尝试从sessionStorage恢复会话
         this.restoreSession();
-        // 检查API可用性
+        // 异步检查API可用性，不阻塞后续操作
         this.checkAvailability();
     },
     
     // 恢复会话
     restoreSession() {
         try {
-            const savedUser = localStorage.getItem('mapconnect_user');
+            const savedUser = sessionStorage.getItem('mapconnect_currentAdmin');
             if (savedUser) {
                 this.state.currentUser = JSON.parse(savedUser);
-                console.log('已恢复用户会话:', this.state.currentUser.username);
+                console.log('已恢复管理员会话:', this.state.currentUser.username);
             }
         } catch (err) {
             console.error('恢复会话失败:', err);
@@ -209,9 +209,22 @@ window.apiService = {
         return this.request('/login', {
             method: 'POST',
             body: { username, password }
+        }).then(data => {
+            // 登录成功后，更新当前用户状态
+            if (data.user && data.user.role === 'admin') {
+                this.state.currentUser = data.user;
+                sessionStorage.setItem('mapconnect_currentAdmin', JSON.stringify(data.user));
+            }
+            return data;
         });
     },
     
+    // 登出
+    logout() {
+        this.state.currentUser = null;
+        sessionStorage.removeItem('mapconnect_currentAdmin');
+    },
+
     // 获取所有标注
     getAllMarkers() {
         return this.request('/admin/all-markers');
@@ -259,7 +272,6 @@ window.apiService = {
     
     // 通用请求方法
     request(endpoint, options = {}) {
-        // 如果API离线且没有强制使用在线模式
         if (!this.state.isOnline && !options.forceOnline) {
             return Promise.reject(new Error('API服务器当前不可用'));
         }
@@ -275,88 +287,39 @@ window.apiService = {
             cache: 'no-cache'
         };
         
-        // 添加认证头
-        if (this.state.currentUser) {
+        // 登录请求不需要认证头，其他请求需要
+        if (endpoint !== '/login' && this.state.currentUser) {
             fetchOptions.headers['X-Admin-Username'] = encodeURIComponent(this.state.currentUser.username);
         }
         
-        // 添加请求体
         if (options.body) {
             fetchOptions.body = JSON.stringify(options.body);
         }
         
         return fetch(url, fetchOptions)
-            .then(res => {
+            .then(async res => {
+                const text = await res.text();
+                const data = text ? JSON.parse(text) : {};
+                
                 if (!res.ok) {
-                    return res.json().then(err => {
-                        throw new Error(err.error || err.message || `服务器返回错误: ${res.status}`);
-                    });
+                    throw new Error(data.error || data.message || `服务器返回错误: ${res.status}`);
                 }
-                return res.json();
+                return data;
             })
             .catch(err => {
                 this.state.lastError = err.message;
-                throw err;
+                console.error(`API请求'${endpoint}'失败:`, err);
+                throw err; // 继续向上抛出错误
             });
     },
     
     // 获取模拟数据（离线模式）
     getMockData(type) {
         const mockData = {
-            stats: {
-                total_markers: 5,
-                total_users: 3,
-                daily_new_markers: 1
-            },
-            markers: [
-                {
-                    id: 1,
-                    title: '示例标注1',
-                    marker_type: 'personal',
-                    user_username: 'user1',
-                    contact: '13800138000',
-                    created_at: new Date().toISOString(),
-                    visibility: 'today',
-                    status: 'active',
-                    description: '这是一个示例标注'
-                },
-                {
-                    id: 2,
-                    title: '示例标注2',
-                    marker_type: 'business',
-                    user_username: 'user2',
-                    contact: '13900139000',
-                    created_at: new Date().toISOString(),
-                    visibility: 'three_days',
-                    status: 'inactive',
-                    description: '这是另一个示例标注'
-                }
-            ],
-            users: [
-                {
-                    id: 1,
-                    username: 'admin',
-                    email: 'admin@example.com',
-                    role: 'admin',
-                    created_at: new Date().toISOString()
-                },
-                {
-                    id: 2,
-                    username: 'user1',
-                    email: 'user1@example.com',
-                    role: 'user',
-                    created_at: new Date().toISOString()
-                },
-                {
-                    id: 3,
-                    username: 'user2',
-                    email: 'user2@example.com',
-                    role: 'user',
-                    created_at: new Date().toISOString()
-                }
-            ]
+            stats: { total_markers: 0, total_users: 0, daily_new_markers: 0 },
+            markers: [],
+            users: []
         };
-        
         return Promise.resolve(mockData[type] || {});
     }
 };
