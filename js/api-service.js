@@ -68,6 +68,9 @@
         deleteMarker: (id) => apiService.request(`/admin/markers/${id}`, { method: 'DELETE' }),
         updateUser: (id, data) => apiService.request(`/admin/users/${id}`, { method: 'PUT', body: data }),
         deleteUser: (id) => apiService.request(`/admin/users/${id}`, { method: 'DELETE' }),
+        getPublicMarkers: () => apiService.request('/markers'),
+        getUserProfile: (username) => apiService.request(`/users/${username}`),
+        createMarker: (data) => apiService.request('/markers', { method: 'POST', body: data }),
         async request(endpoint, options = {}) {
             if (!this.state.isOnline && !options.forceOnline) {
                 throw new Error('API服务器当前不可用');
@@ -79,9 +82,23 @@
                 mode: 'cors',
                 cache: 'no-cache'
             };
-            if (endpoint !== '/login' && this.state.currentUser) {
-                fetchOptions.headers['X-Admin-Username'] = encodeURIComponent(this.state.currentUser.username);
+            
+            if (endpoint.startsWith('/admin/')) {
+                // Admin endpoints require admin user in state
+                if (this.state.currentUser && this.state.currentUser.role === 'admin') {
+                    fetchOptions.headers['X-Admin-Username'] = encodeURIComponent(this.state.currentUser.username);
+                }
+            } else if (endpoint !== '/login' && endpoint !== '/token') {
+                // For other endpoints, check for a regular user session token
+                const userSessionData = sessionStorage.getItem('mapconnect_currentUser');
+                if (userSessionData) {
+                    const userSession = JSON.parse(userSessionData);
+                    if (userSession.token) {
+                        fetchOptions.headers['Authorization'] = `Bearer ${userSession.token}`;
+                    }
+                }
             }
+
             if (options.body) {
                 fetchOptions.body = JSON.stringify(options.body);
             }
