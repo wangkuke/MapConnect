@@ -887,7 +887,7 @@
                         let avatarUrl = user.avatar_url;
                         // 检查 api-service.js 是否提供了 API_CONFIG
                         if (!avatarUrl.startsWith('http')) {
-                            avatarUrl = `${API_CONFIG.BASE_URL}${avatarUrl}`;
+                            avatarUrl = `${apiService.config.BASE_URL}${avatarUrl}`;
                         }
                         userAvatarEl.style.backgroundImage = `url(${avatarUrl})`;
                         userAvatarEl.textContent = '';
@@ -1026,7 +1026,7 @@
                     modal.innerHTML = `
                         <button class="profile-modal-close-btn">&times;</button>
                         <div class="profile-modal-content">
-                            <div class="avatar" style="background-image: url(${profile.avatar_url ? (profile.avatar_url.startsWith('http') ? profile.avatar_url : API_CONFIG.BASE_URL + profile.avatar_url) : ''})">${profile.avatar_url ? '' : (profile.name || profile.username).charAt(0).toUpperCase()}</div>
+                            <div class="avatar" style="background-image: url(${profile.avatar_url ? (profile.avatar_url.startsWith('http') ? profile.avatar_url : apiService.config.BASE_URL + profile.avatar_url) : ''})">${profile.avatar_url ? '' : (profile.name || profile.username).charAt(0).toUpperCase()}</div>
                             <h2 class="name">${profile.name || profile.username}</h2>
                             <div class="user-details">
                                 ${profile.gender && profile.gender !== 'secret' ? `<div class="detail-item"><i class="fas fa-venus-mars"></i> ${profile.gender === 'male' ? '男' : '女'}</div>` : ''}
