@@ -7,10 +7,13 @@
 
     const apiService = {
         config: {
-            // 自动判断环境：本地开发使用 localhost，生产环境使用 api.mapconnect.club
+            // 自动判断环境：
+            // 1. 本地开发 (localhost, 127.0.0.1) -> http://localhost:5000/api
+            // 2. 部署环境 (GitHub Pages 等) -> 默认为 http://localhost:5000/api (需要您修改为真实的后端地址)
+            // 注意：如果您在 HTTPS 环境(如 GitHub Pages)下访问 HTTP 本地后端，可能会被浏览器拦截(Mixed Content)。
             BASE_URL: (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') 
                 ? 'http://localhost:5000/api' 
-                : 'https://api.mapconnect.club/api',
+                : 'https://api.9696mm.club', // TODO: 部署上线时，请将此处修改为您的真实后端域名，例如 'https://your-backend.com/api'
         },
         state: {
             isOnline: true,
