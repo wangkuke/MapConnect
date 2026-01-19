@@ -1,0 +1,810 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MapConnect - 标注编辑器</title>
+    <script src="js/map-config.js"></script>
+    <script src="js/api-service.js?v=1.8"></script>
+    <link rel="stylesheet" href="https://cdn.bootcdn.net/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <style>
+        :root {
+            --primary: #4361ee;
+            --secondary: #3f37c9;
+            --accent: #4895ef;
+            --success: #4cc9f0;
+            --light: #f8f9fa;
+            --dark: #212529;
+            --text: #343a40;
+            --card-bg: rgba(255, 255, 255, 0.85);
+            --glass-bg: rgba(255, 255, 255, 0.25);
+            --glass-border: rgba(255, 255, 255, 0.18);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        body {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: var(--text);
+            min-height: 100vh;
+        }
+
+        .container {
+            display: grid;
+            grid-template-columns: 1fr 350px;
+            height: 100vh;
+            padding: 20px;
+            gap: 20px;
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                grid-template-columns: 1fr;
+                grid-template-rows: 1fr auto;
+            }
+        }
+
+        /* 地图容器 */
+        .map-container {
+            border-radius: 20px;
+            overflow: hidden;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.15);
+            position: relative;
+        }
+
+        #map {
+            height: 100%;
+            width: 100%;
+        }
+
+        /* 右侧面板样式 */
+        .editor-panel {
+            background: var(--glass-bg);
+            backdrop-filter: blur(12px);
+            border-radius: 20px;
+            padding: 25px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+            border: 1px solid var(--glass-border);
+            display: flex;
+            flex-direction: column;
+            overflow-y: auto;
+        }
+
+        .panel-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 25px;
+        }
+
+        .panel-title {
+            font-size: 1.5rem;
+            font-weight: 700;
+            background: linear-gradient(to right, var(--primary), var(--success));
+            -webkit-background-clip: text;
+            background-clip: text;
+            color: transparent;
+            display: flex;
+            align-items: center;
+        }
+
+        .panel-title i {
+            margin-right: 10px;
+            font-size: 1.8rem;
+            color: var(--primary);
+        }
+
+        .back-btn {
+            background: var(--card-bg);
+            border: none;
+            padding: 8px 15px;
+            border-radius: 50px;
+            display: flex;
+            align-items: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-weight: 600;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.05);
+            font-size: 0.9rem;
+        }
+
+        .back-btn i {
+            margin-right: 5px;
+        }
+
+        .back-btn:hover {
+            transform: translateX(-5px);
+            box-shadow: 0 6px 20px rgba(0, 0, 0, 0.1);
+        }
+
+        .marker-position {
+            background: var(--card-bg);
+            border-radius: 15px;
+            padding: 15px;
+            margin-bottom: 20px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.05);
+        }
+
+        .position-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 10px;
+            font-weight: 600;
+            font-size: 1rem;
+        }
+
+        .position-header-left {
+            display: flex;
+            align-items: center;
+        }
+
+        .position-header-left i {
+            margin-right: 8px;
+            color: var(--primary);
+        }
+
+        .locate-btn {
+            background: var(--primary);
+            color: white;
+            border: none;
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(67, 97, 238, 0.3);
+        }
+
+        .locate-btn:hover {
+            transform: scale(1.1);
+            box-shadow: 0 6px 20px rgba(67, 97, 238, 0.5);
+        }
+
+        .locate-btn i {
+            font-size: 1rem;
+        }
+
+        .coordinates {
+            display: flex;
+            gap: 10px;
+        }
+
+        .coordinate {
+            flex: 1;
+            background: var(--light);
+            padding: 10px;
+            border-radius: 10px;
+            font-size: 0.9rem;
+            text-align: center;
+            box-shadow: inset 0 2px 5px rgba(0, 0, 0, 0.05);
+        }
+
+        .coordinate span {
+            font-weight: 600;
+            color: var(--primary);
+        }
+
+        .instruction {
+            background: var(--card-bg);
+            border-radius: 15px;
+            padding: 15px;
+            margin-bottom: 20px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.05);
+            font-size: 0.9rem;
+            line-height: 1.5;
+            display: flex;
+            align-items: center;
+        }
+
+        .instruction i {
+            font-size: 1.5rem;
+            color: var(--accent);
+            margin-right: 10px;
+            flex-shrink: 0;
+        }
+
+        /* 表单样式 */
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            font-size: 0.9rem;
+        }
+
+        .form-group input,
+        .form-group textarea,
+        .form-group select {
+            width: 100%;
+            padding: 12px 15px;
+            border-radius: 10px;
+            border: none;
+            background: var(--card-bg);
+            font-size: 1rem;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.05);
+        }
+
+        .form-group input:focus,
+        .form-group textarea:focus,
+        .form-group select:focus {
+            outline: none;
+            box-shadow: 0 4px 15px rgba(67, 97, 238, 0.3);
+        }
+
+        .form-group textarea {
+            resize: vertical;
+            min-height: 100px;
+        }
+
+        .icon-selector {
+            display: flex;
+            gap: 10px;
+            margin-top: 10px;
+        }
+
+        .icon-option {
+            flex: 1;
+            background: var(--card-bg);
+            padding: 10px 5px;
+            border-radius: 10px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .icon-option.active {
+            background: var(--primary);
+            color: white;
+            box-shadow: 0 4px 15px rgba(67, 97, 238, 0.3);
+            transform: translateY(-3px);
+        }
+
+        .icon-option:hover:not(.active) {
+            transform: translateY(-3px);
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+        }
+
+        .icon-option i {
+            font-size: 1.5rem;
+            margin-bottom: 5px;
+            display: block;
+        }
+
+        .submit-btn {
+            background: linear-gradient(to right, var(--primary), var(--accent));
+            color: white;
+            border: none;
+            padding: 15px;
+            border-radius: 15px;
+            font-size: 1rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-weight: 600;
+            box-shadow: 0 4px 15px rgba(67, 97, 238, 0.3);
+            width: 100%;
+            margin-top: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .submit-btn i {
+            margin-right: 10px;
+        }
+
+        .submit-btn:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 8px 25px rgba(67, 97, 238, 0.5);
+        }
+
+        /* 动画效果 */
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .animate {
+            animation: fadeIn 0.5s ease forwards;
+        }
+
+        .delay-1 { animation-delay: 0.1s; }
+        .delay-2 { animation-delay: 0.2s; }
+        .delay-3 { animation-delay: 0.3s; }
+        .delay-4 { animation-delay: 0.4s; }
+
+        /* 位置状态提示 */
+        .location-status {
+            font-size: 0.8rem;
+            margin-top: 5px;
+            display: none;
+            color: var(--accent);
+            text-align: center;
+        }
+
+        .location-status.active {
+            display: block;
+            animation: pulse 1.5s infinite;
+        }
+
+        @keyframes pulse {
+            0% { opacity: 0.6; }
+            50% { opacity: 1; }
+            100% { opacity: 0.6; }
+        }
+
+        /* 地图标记图标样式 */
+        .marker-icon {
+            display: flex !important;
+            align-items: center !important;
+            justify-content: center !important;
+            width: 40px !important;
+            height: 40px !important;
+            border-radius: 50% !important;
+            background: white !important;
+            box-shadow: 0 3px 10px rgba(0, 0, 0, 0.3) !important;
+            font-size: 1.5rem !important;
+            border: 3px solid var(--primary) !important;
+        }
+
+        .marker-icon i {
+            font-size: 1.5rem;
+            text-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+        }
+
+        .marker-icon.personal {
+            color: #4361ee !important;
+            border-color: #4361ee !important;
+            background: rgba(67, 97, 238, 0.15) !important;
+        }
+
+        .marker-icon.business {
+            color: #fffb23 !important;
+            border-color: #1b1b1b !important;
+            background: rgba(255, 251, 35, 0.15) !important;
+        }
+
+        .marker-icon.official {
+            color: #ff4444 !important;
+            border-color: #ff4444 !important;
+            background: rgba(255, 68, 68, 0.15) !important;
+        }
+
+        .marker-icon.charity {
+            color: #1ba000 !important;
+            border-color: #1ba000 !important;
+            background: rgba(25, 160, 0, 0.15) !important;
+        }
+
+        /* 标记切换类型时的动画 */
+        .marker-pulse i {
+            animation: markerIconPulse 0.6s ease-in-out;
+        }
+
+        @keyframes markerIconPulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.2); }
+            100% { transform: scale(1); }
+        }
+
+        /* 用户当前位置标记样式 */
+        .user-location-marker {
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background-color: #4361ee;
+            border: 3px solid white;
+            box-shadow: 0 0 10px rgba(67, 97, 238, 0.7);
+        }
+
+        .user-location-marker-pulse {
+            animation: userLocationPulse 2s infinite;
+        }
+
+        @keyframes userLocationPulse {
+            0% {
+                transform: scale(1);
+                opacity: 0.7;
+            }
+            70% {
+                transform: scale(3);
+                opacity: 0;
+            }
+            100% {
+                transform: scale(1);
+                opacity: 0;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- 左侧地图区域 -->
+        <div class="map-container">
+            <div id="map"></div>
+        </div>
+
+        <!-- 右侧编辑面板 -->
+        <div class="editor-panel">
+            <div class="panel-header">
+                <div class="panel-title">
+                    <i class="fas fa-map-pin"></i> 标注编辑器
+                </div>
+                <button class="back-btn" onclick="window.location.href='index.html'">
+                    <i class="fas fa-arrow-left"></i> 返回
+                </button>
+            </div>
+
+            <div class="marker-position animate">
+                <div class="position-header">
+                    <div class="position-header-left">
+                        <i class="fas fa-location-dot"></i> 当前位置
+                    </div>
+                    <button type="button" id="locate-btn" class="locate-btn" title="获取我的位置">
+                        <i class="fas fa-crosshairs"></i>
+                    </button>
+                </div>
+                <div class="coordinates">
+                    <div class="coordinate">
+                        纬度: <span id="lat">31.2304</span>
+                    </div>
+                    <div class="coordinate">
+                        经度: <span id="lng">121.4737</span>
+                    </div>
+                </div>
+                <div id="location-status" class="location-status">正在获取位置...</div>
+            </div>
+
+            <div class="instruction animate delay-1">
+                <i class="fas fa-info-circle"></i>
+                <p>点击地图选择标注位置，或点击定位按钮获取当前位置，然后填写下方信息创建标注。</p>
+            </div>
+
+            <form id="marker-form" class="animate delay-2">
+                <div class="form-group">
+                    <label for="marker-title">标注标题</label>
+                    <input type="text" id="marker-title" name="title" placeholder="例如：人民公园足球场" required>
+                </div>
+
+                <div class="form-group">
+                    <label for="marker-type">标注类型</label>
+                    <select id="marker-type" name="marker_type" required>
+                        <option value="personal" selected>个人</option>
+                        <option value="business">企业</option>
+                        <option value="official">官方</option>
+                        <option value="charity">公益</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label for="marker-description">详细描述</label>
+                    <textarea id="marker-description" name="description" placeholder="描述活动详情、时间、要求等信息..." required></textarea>
+                </div>
+
+                <div class="form-group">
+                    <label for="marker-contact">联系方式</label>
+                    <input type="text" id="marker-contact" name="contact" placeholder="手机号码、微信或其他联系方式">
+                </div>
+
+                <div class="form-group">
+                    <label for="marker-visibility">可见性</label>
+                    <select id="marker-visibility" name="visibility">
+                        <option value="today">当日可见</option>
+                        <option value="three_days">三日可见</option>
+                    </select>
+                </div>
+
+                <button type="submit" class="submit-btn">
+                    <i class="fas fa-check"></i> 保存标注
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        // 防止全局变量冲突
+        (function() {
+            // 初始化地图和全局变量
+            let map, marker, userLocationMarker;
+            let isEditing = false;
+            let editingMarkerId = null;
+            let currentLatLng = {
+                lat: 31.2304,
+                lng: 121.4737
+            };
+            let selectedType;
+            
+            // --- 应用程序初始化和安全检查 ---
+            function initializeApp(currentUser) {
+                
+                // 监听标注类型变化，处理特殊权限提示
+                document.getElementById('marker-type').addEventListener('change', function() {
+                    const selectedType = this.value;
+                    if (['official', 'charity'].includes(selectedType) && currentUser.role !== 'admin') {
+                        // 恢复到个人类型
+                        this.value = 'personal';
+                        // 触发change事件以更新UI
+                        const event = new Event('change');
+                        this.dispatchEvent(event);
+                        
+                        alert('权限提示：\n\n该类型仅限官方或合作机构使用。\n如需申请权限，请联系管理员微信：cock4450');
+                    }
+                });
+
+                // 加载高德地图 API
+                loadAMapAPI().then(AMap => {
+                    initMap(AMap);
+                }).catch(e => {
+                    console.error('地图加载失败', e);
+                    alert('地图加载失败，请检查网络或配置');
+                });
+
+                function initMap(AMap) {
+                    // 初始化地图
+                    map = new AMap.Map('map', {
+                        zoom: 13,
+                        center: [121.4737, 31.2304], // Shanghai
+                        resizeEnable: true
+                    });
+                    
+                    // 添加控件
+                    AMap.plugin(['AMap.ToolBar', 'AMap.Scale'], function(){
+                        map.addControl(new AMap.ToolBar());
+                        map.addControl(new AMap.Scale());
+                    });
+
+                    // 更新位置显示
+                    function updatePositionDisplay() {
+                        document.getElementById('lat').textContent = currentLatLng.lat.toFixed(6);
+                        document.getElementById('lng').textContent = currentLatLng.lng.toFixed(6);
+                    }
+
+                    // 初始标记
+                    selectedType = document.getElementById('marker-type').value;
+                    // 高德地图 Marker
+                    marker = new AMap.Marker({
+                        position: new AMap.LngLat(currentLatLng.lng, currentLatLng.lat),
+                        draggable: true,
+                        cursor: 'move',
+                        content: createMarkerContent(selectedType) // 使用自定义内容
+                    });
+                    marker.setMap(map);
+
+                    // 拖动标记事件
+                    marker.on('dragend', function(e) {
+                        const lnglat = e.target.getPosition();
+                        currentLatLng.lat = lnglat.lat;
+                        currentLatLng.lng = lnglat.lng;
+                        updatePositionDisplay();
+                    });
+
+                    // 点击地图事件
+                    map.on('click', function(e) {
+                        currentLatLng.lat = e.lnglat.lat;
+                        currentLatLng.lng = e.lnglat.lng;
+                        
+                        // 更新标记位置
+                        if (marker) {
+                            marker.setPosition(e.lnglat);
+                        } else {
+                            marker = new AMap.Marker({
+                                position: e.lnglat,
+                                draggable: true,
+                                content: createMarkerContent(selectedType)
+                            });
+                            marker.setMap(map);
+                            
+                            // 拖动标记事件
+                            marker.on('dragend', function(e) {
+                                const lnglat = e.target.getPosition();
+                                currentLatLng.lat = lnglat.lat;
+                                currentLatLng.lng = lnglat.lng;
+                                updatePositionDisplay();
+                            });
+                        }
+                        
+                        updatePositionDisplay();
+                    });
+
+                    // 标记类型更改
+                    document.getElementById('marker-type').addEventListener('change', function() {
+                        selectedType = this.value;
+                        if (marker) {
+                            marker.setContent(createMarkerContent(selectedType));
+                            // 简单的动画效果可以通过 CSS 类实现，这里简化处理
+                        }
+                    });
+
+                    // 定位按钮
+                    document.getElementById('locate-btn').addEventListener('click', function() {
+                        const locateBtn = this;
+                        const originalIcon = locateBtn.innerHTML;
+                        
+                        // 设置加载状态
+                        locateBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
+                        locateBtn.disabled = true;
+                        document.getElementById('location-status').textContent = '正在获取高精度位置...';
+                        document.getElementById('location-status').classList.add('active');
+
+                        AMap.plugin('AMap.Geolocation', function() {
+                            var geolocation = new AMap.Geolocation({
+                                enableHighAccuracy: true,
+                                timeout: 10000,
+                                zoomToAccuracy: true,
+                            });
+
+                            geolocation.getCurrentPosition(function(status, result) {
+                                // 恢复按钮状态
+                                locateBtn.innerHTML = originalIcon;
+                                locateBtn.disabled = false;
+                                document.getElementById('location-status').classList.remove('active');
+
+                                if (status == 'complete') {
+                                    const lat = result.position.lat;
+                                    const lng = result.position.lng;
+                                    
+                                    // 更新当前位置
+                                    currentLatLng.lat = lat;
+                                    currentLatLng.lng = lng;
+                                    updatePositionDisplay();
+                                    
+                                    // 更新标记位置
+                                    if (marker) {
+                                        marker.setPosition(result.position);
+                                    } else {
+                                        marker = new AMap.Marker({
+                                            position: result.position,
+                                            draggable: true,
+                                            content: createMarkerContent(selectedType)
+                                        });
+                                        marker.setMap(map);
+                                    }
+                                    
+                                    // 用户位置标记 (可选，AMap Geolocation 默认会显示一个蓝点，如果需要自定义可以再加)
+                                    // 这里的 zoomToAccuracy 已经处理了视图跳转
+                                } else {
+                                    console.warn('定位失败', result);
+                                    let msg = '无法获取您的位置。';
+                                    if (result.message.includes('permission denied')) {
+                                        msg = '请允许浏览器获取位置权限。';
+                                    } else {
+                                        msg += '原因: ' + result.message;
+                                    }
+                                    alert(msg);
+                                }
+                            });
+                        });
+                    });
+
+                    // 更新初始位置显示
+                    updatePositionDisplay();
+                }
+
+                // 绑定表单提交事件
+                document.getElementById('marker-form').addEventListener('submit', (e) => {
+                    e.preventDefault();
+                    submitMarker();
+                });
+            }
+            
+            // 提交标注
+            function submitMarker() {
+                // 获取当前登录用户
+                const currentUser = JSON.parse(sessionStorage.getItem('mapconnect_currentUser'));
+                if (!currentUser) {
+                    alert('请先登录后再创建标注！');
+                    window.location.href = 'user-system.html';
+                    return;
+                }
+
+                // 获取表单数据
+                const title = document.getElementById('marker-title').value;
+                const description = document.getElementById('marker-description').value;
+                const markerType = document.getElementById('marker-type').value;
+                const contact = document.getElementById('marker-contact').value;
+                const visibility = document.getElementById('marker-visibility').value;
+                
+                // 验证必填项
+                if (!title.trim()) {
+                    alert('标题是必填项！');
+                    return;
+                }
+                if (!description.trim()) {
+                    alert('详细描述是必填项！');
+                    return;
+                }
+                if (!currentLatLng) {
+                    alert('位置是必填项！请在地图上点击选择位置。');
+                    return;
+                }
+                
+                // 准备请求体
+                const markerData = {
+                    user_username: currentUser.username, 
+                    title: title,
+                    description: description,
+                    lat: currentLatLng.lat,
+                    lng: currentLatLng.lng,
+                    marker_type: markerType,
+                    contact: contact,
+                    visibility: visibility
+                };
+                
+                console.log('发送标注数据 (JSON格式):', JSON.stringify(markerData, null, 2));
+                
+                // 禁用提交按钮
+                const submitBtn = document.querySelector('.submit-btn');
+                const originalText = submitBtn.innerHTML;
+                submitBtn.disabled = true;
+                submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> 提交中...';
+                
+                // 使用 apiService 创建标注
+                apiService.createMarker(markerData)
+                    .then(data => {
+                        console.log('创建标注成功:', data);
+                        alert('标注创建成功！');
+                        window.location.href = 'index.html';
+                    })
+                    .catch(error => {
+                        console.error('创建标注时出错：', error);
+                        alert(`创建标注失败: ${error.message}`);
+                        // 恢复按钮
+                        submitBtn.disabled = false;
+                        submitBtn.innerHTML = originalText;
+                    });
+            }
+            
+            // 创建标注图标内容 (HTML String)
+            function createMarkerContent(type) {
+                const iconMap = {
+                    personal: 'fa-user',
+                    business: 'fa-briefcase',
+                    official: 'fa-landmark',
+                    charity: 'fa-hand-holding-heart'
+                };
+                
+                const iconClass = iconMap[type] || 'fa-map-marker-alt';
+                // 返回一个包含 CSS 样式的 HTML 字符串，类似 Leaflet divIcon
+                return `<div class="marker-icon ${type}" style="
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    width: 40px;
+                    height: 40px;
+                    border-radius: 50%;
+                    background: white;
+                    box-shadow: 0 3px 10px rgba(0, 0, 0, 0.3);
+                    font-size: 1.5rem;
+                    border: 3px solid #4361ee;
+                    /* 这里需要把 marker-icon 的样式内联或者确保 CSS 类生效 */
+                "><i class="fas ${iconClass}"></i></div>`;
+            }
+
+            // 当DOM加载完成后初始化
+            document.addEventListener('DOMContentLoaded', function() {
+                // 检查是否登录
+                const currentUser = JSON.parse(sessionStorage.getItem('mapconnect_currentUser'));
+                
+                if (!currentUser) {
+                    alert('请先登录后再添加标注！');
+                    window.location.href = 'user-system.html';
+                    return;
+                }
+                
+                initializeApp(currentUser);
+            });
+        })();
+    </script>
+</body>
+</html> 

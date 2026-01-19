@@ -1,0 +1,1247 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Expires" content="0">
+    <title>MapConnect - 地图标注社交平台</title>
+    <script src="js/map-config.js"></script>
+    <script src="js/api-service.js?v=1.8"></script>
+    <link rel="stylesheet" href="https://cdn.bootcdn.net/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <style>
+        :root {
+            --primary: #4361ee;
+            --secondary: #3f37c9;
+            --accent: #4895ef;
+            --success: #4cc9f0;
+            --danger: #f72585;
+            --light: #f8f9fa;
+            --dark: #212529;
+            --text: #343a40;
+            --card-bg: rgba(255, 255, 255, 0.85);
+            --glass-bg: rgba(255, 255, 255, 0.25);
+            --glass-border: rgba(255, 255, 255, 0.18);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        body {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: var(--text);
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+
+        .container {
+            display: grid;
+            grid-template-columns: 350px 1fr;
+            height: 100vh;
+            padding: 20px;
+            gap: 20px;
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                display: block;
+                height: auto;
+                padding: 10px;
+            }
+
+            .panel {
+                padding: 15px;
+                overflow-y: visible;
+                margin-bottom: 15px;
+            }
+
+            .map-container {
+                height: 50vh;
+            }
+
+            .logo h1 {
+                font-size: 1.6rem;
+            }
+            
+            .user-area {
+                padding: 10px;
+                margin-bottom: 15px;
+            }
+
+            .user-avatar {
+                width: 40px;
+                height: 40px;
+                font-size: 1.1rem;
+            }
+
+            .user-info h3 {
+                font-size: 1rem;
+            }
+
+            .functions {
+                margin: 15px 0;
+                gap: 10px;
+            }
+            
+            .func-card {
+                padding: 15px;
+            }
+
+            .func-card i {
+                font-size: 1.5rem;
+            }
+
+            .func-card h3 {
+                font-size: 0.9rem;
+            }
+
+            .search-container input {
+                padding: 12px 20px 12px 45px;
+            }
+
+            .search-container i {
+                left: 18px;
+            }
+
+            .map-controls {
+                bottom: 60px;
+                right: 20px;
+            }
+
+            .map-control-btn {
+                width: 50px;
+                height: 50px;
+                font-size: 1.4rem;
+            }
+        }
+
+        /* 左侧面板样式 */
+        .panel {
+            background: var(--glass-bg);
+            backdrop-filter: blur(12px);
+            border-radius: 20px;
+            padding: 25px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+            border: 1px solid var(--glass-border);
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        .logo {
+            display: flex;
+            align-items: center;
+            margin-bottom: 25px;
+        }
+
+        .logo i {
+            font-size: 2.2rem;
+            color: var(--primary);
+            margin-right: 12px;
+        }
+
+        .logo h1 {
+            font-size: 1.8rem;
+            font-weight: 700;
+            background: linear-gradient(to right, var(--primary), var(--success));
+            -webkit-background-clip: text;
+            background-clip: text;
+            color: transparent;
+        }
+
+        /* 用户区域 */
+        .user-area {
+            display: flex;
+            align-items: center;
+            padding: 15px;
+            background: var(--card-bg);
+            border-radius: 15px;
+            margin-bottom: 20px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
+            transition: all 0.3s ease;
+            cursor: pointer;
+            position: relative;
+        }
+
+        .user-area:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 6px 25px rgba(0, 0, 0, 0.1);
+        }
+
+        .user-avatar {
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            background: linear-gradient(45deg, var(--accent), var(--success));
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 1.3rem;
+            font-weight: bold;
+            margin-right: 15px;
+        }
+
+        .user-info h3 {
+            font-size: 1.1rem;
+            margin-bottom: 5px;
+        }
+
+        .user-info p {
+            font-size: 0.85rem;
+            color: #6c757d;
+        }
+
+        .logout-btn {
+            position: absolute;
+            top: 15px;
+            right: 15px;
+            background: none;
+            border: none;
+            font-size: 1.3rem;
+            color: #adb5bd;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            padding: 5px;
+            line-height: 1;
+            z-index: 10;
+            display: none; /* Initially hidden */
+        }
+
+        .logout-btn:hover {
+            color: var(--danger);
+            transform: scale(1.1);
+        }
+
+        /* 功能区 */
+        .functions {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+            margin: 20px 0;
+        }
+
+        .func-card {
+            background: var(--card-bg);
+            border-radius: 15px;
+            padding: 20px;
+            text-align: center;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.05);
+            transition: all 0.3s ease;
+            cursor: pointer;
+        }
+
+        .func-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.1);
+            background: linear-gradient(135deg, var(--card-bg), rgba(255, 255, 255, 0.95));
+        }
+
+        .func-card i {
+            font-size: 2rem;
+            margin-bottom: 15px;
+            color: var(--primary);
+        }
+
+        .func-card h3 {
+            font-size: 1rem;
+            margin-bottom: 5px;
+        }
+
+        .func-card p {
+            font-size: 0.8rem;
+            color: #6c757d;
+        }
+
+        /* 搜索区 */
+        .search-container {
+            margin: 20px 0;
+            position: relative;
+        }
+
+        .search-container input {
+            width: 100%;
+            padding: 14px 20px 14px 50px;
+            border-radius: 50px;
+            border: none;
+            background: var(--card-bg);
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.05);
+            font-size: 1rem;
+            transition: all 0.3s ease;
+        }
+
+        .search-container input:focus {
+            outline: none;
+            box-shadow: 0 4px 20px rgba(67, 97, 238, 0.3);
+        }
+
+        .search-container i {
+            position: absolute;
+            left: 20px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: var(--primary);
+        }
+
+        /* 标注列表 */
+        .markers-container {
+            flex: 1;
+            overflow-y: auto;
+            padding-right: 10px;
+        }
+
+        .markers-container h2 {
+            margin-bottom: 15px;
+            font-size: 1.3rem;
+            display: flex;
+            align-items: center;
+        }
+
+        .markers-container h2 i {
+            margin-right: 10px;
+            color: var(--accent);
+        }
+
+        .marker-card {
+            background: var(--card-bg);
+            border-radius: 15px;
+            padding: 20px;
+            margin-bottom: 15px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.05);
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .marker-card:hover {
+            transform: translateX(5px);
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.1);
+        }
+
+        .marker-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            height: 100%;
+            width: 5px;
+            background: linear-gradient(to bottom, var(--accent), var(--success));
+        }
+
+        .marker-card h3 {
+            font-size: 1.1rem;
+            margin-bottom: 8px;
+            display: flex;
+            align-items: center;
+        }
+
+        .marker-card h3 i {
+            margin-right: 10px;
+            color: var(--primary);
+        }
+
+        .marker-card p {
+            font-size: 0.9rem;
+            color: #6c757d;
+            margin-bottom: 15px;
+            line-height: 1.5;
+        }
+
+        .marker-footer {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 0.85rem;
+        }
+
+        .marker-user {
+            display: flex;
+            align-items: center;
+        }
+
+        .marker-user span {
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            background: var(--accent);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 0.8rem;
+            margin-right: 10px;
+        }
+
+        .contact-btn {
+            background: linear-gradient(to right, var(--primary), var(--accent));
+            color: white;
+            border: none;
+            padding: 8px 15px;
+            border-radius: 50px;
+            font-size: 0.8rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .contact-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(67, 97, 238, 0.4);
+        }
+
+        /* Leaflet Popup Styles */
+        .leaflet-popup-content-wrapper {
+            border-radius: 12px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(8px);
+        }
+
+        .leaflet-popup-content {
+            margin: 18px !important;
+            padding: 0 !important;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            color: var(--text);
+        }
+
+        .leaflet-popup-tip {
+            background: rgba(255, 255, 255, 0.95);
+        }
+        
+        .popup-content h4 {
+            margin-bottom: 10px;
+            font-size: 1.1rem;
+            font-weight: 700;
+            color: var(--primary);
+        }
+
+        .popup-content p {
+            margin-bottom: 15px;
+            font-size: 0.9rem;
+            line-height: 1.5;
+        }
+
+        .popup-footer {
+            font-size: 0.85rem;
+            border-top: 1px solid #eee;
+            padding-top: 10px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .popup-footer strong {
+            color: var(--secondary);
+        }
+
+        .popup-contact-btn {
+            background: linear-gradient(to right, var(--primary), var(--accent));
+            color: white;
+            border: none;
+            padding: 6px 12px;
+            border-radius: 50px;
+            font-size: 0.8rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .popup-contact-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 10px rgba(67, 97, 238, 0.4);
+        }
+
+        /* 地图容器 */
+        .map-container {
+            border-radius: 20px;
+            overflow: hidden;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.15);
+            position: relative;
+        }
+
+        #map {
+            height: 100%;
+            width: 100%;
+        }
+
+        /* 地图控件按钮 */
+        .map-controls {
+                position: absolute;
+                bottom: 80px;
+                right: 30px;
+                z-index: 1000;
+                display: flex;
+                flex-direction: column;
+                gap: 15px;
+            }
+
+        .map-control-btn {
+            width: 56px;
+            height: 56px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.6rem;
+            box-shadow: 0 6px 20px rgba(67, 97, 238, 0.5);
+            cursor: pointer;
+            transition: all 0.3s ease;
+            border: none;
+        }
+
+        .map-control-btn:hover {
+            transform: scale(1.1);
+            box-shadow: 0 8px 25px rgba(67, 97, 238, 0.7);
+        }
+
+        .map-control-btn#add-marker-btn:hover {
+            transform: scale(1.1) rotate(90deg);
+        }
+
+        /* 用户当前位置标记样式 */
+        .user-location-marker-container {
+            position: relative;
+        }
+
+        .user-location-marker {
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background-color: var(--primary);
+            border: 3px solid white;
+            box-shadow: 0 0 10px rgba(67, 97, 238, 0.7);
+        }
+
+        .user-location-marker-pulse {
+            position: absolute;
+            top: 0;
+            left: 0;
+            height: 100%;
+            width: 100%;
+            border-radius: 50%;
+            background-color: var(--primary);
+            animation: pulse 1.5s infinite;
+        }
+
+        @keyframes pulse {
+            0% {
+                transform: scale(1);
+                opacity: 0.7;
+            }
+            70% {
+                transform: scale(4);
+                opacity: 0;
+            }
+            100% {
+                transform: scale(1);
+                opacity: 0;
+            }
+        }
+
+        /* 动画效果 */
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .animate {
+            animation: fadeIn 0.5s ease forwards;
+        }
+
+        .delay-1 { animation-delay: 0.1s; }
+        .delay-2 { animation-delay: 0.2s; }
+        .delay-3 { animation-delay: 0.3s; }
+        .delay-4 { animation-delay: 0.4s; }
+
+        /* 标记图标样式 */
+        .marker-icon {
+            display: flex !important;
+            align-items: center !important;
+            justify-content: center !important;
+            width: 40px !important;
+            height: 40px !important;
+            border-radius: 50% !important;
+            background: white !important;
+            box-shadow: 0 3px 10px rgba(0, 0, 0, 0.3) !important;
+            font-size: 1.5rem !important;
+            border: 3px solid var(--primary) !important;
+        }
+
+        .marker-icon i {
+            font-size: 1.5rem;
+            text-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+        }
+
+        .marker-icon.personal {
+            color: #4361ee !important;
+            border-color: #4361ee !important;
+            background: rgba(67, 97, 238, 0.15) !important;
+        }
+
+        .marker-icon.business {
+            color: #fffb23 !important;
+            border-color: #1b1b1b !important;
+            background: rgba(255, 251, 35, 0.15) !important;
+        }
+
+        .marker-icon.official {
+            color: #ff4444 !important;
+            border-color: #ff4444 !important;
+            background: rgba(255, 68, 68, 0.15) !important;
+        }
+
+        .marker-icon.charity {
+            color: #1ba000 !important;
+            border-color: #1ba000 !important;
+            background: rgba(25, 160, 0, 0.15) !important;
+        }
+
+        /* 通知图标 */
+        .notification-badge {
+            position: absolute;
+            top: -5px;
+            right: -5px;
+            background: #f72585;
+            color: white;
+            border-radius: 50%;
+            width: 20px;
+            height: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.7rem;
+            font-weight: bold;
+            box-shadow: 0 3px 10px rgba(0, 0, 0, 0.2);
+        }
+
+        /* --- Profile Modal Styles --- */
+        .profile-modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.6);
+            z-index: 1050;
+            opacity: 0;
+            visibility: hidden;
+            transition: opacity 0.3s ease, visibility 0.3s ease;
+        }
+
+        .profile-modal {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -60%);
+            width: 90%;
+            max-width: 500px;
+            background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+            border-radius: 20px;
+            z-index: 1060;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+            opacity: 0;
+            visibility: hidden;
+            transition: all 0.3s ease;
+        }
+
+        .profile-modal.active,
+        .profile-modal-overlay.active {
+            opacity: 1;
+            visibility: visible;
+        }
+
+        .profile-modal.active {
+            transform: translate(-50%, -50%);
+        }
+
+        .profile-modal-content {
+            padding: 30px;
+            text-align: center;
+            animation: fadeInContent 0.5s ease forwards;
+        }
+        
+        @keyframes fadeInContent {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .profile-modal .avatar {
+            width: 120px;
+            height: 120px;
+            border-radius: 50%;
+            margin: 0 auto 20px auto;
+            background: linear-gradient(45deg, var(--accent), var(--success));
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 3rem;
+            font-weight: bold;
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.1);
+            background-size: cover;
+            background-position: center;
+            border: 4px solid white;
+        }
+        
+        .profile-modal .name {
+            font-size: 1.6rem;
+            font-weight: 700;
+            margin-bottom: 15px;
+            color: var(--dark);
+        }
+
+        .profile-modal .user-details {
+            display: flex;
+            justify-content: center;
+            gap: 20px;
+            margin-bottom: 15px;
+            color: #495057;
+        }
+
+        .profile-modal .detail-item {
+            display: flex;
+            align-items: center;
+            background: rgba(0,0,0,0.05);
+            padding: 5px 12px;
+            border-radius: 20px;
+            font-size: 0.9rem;
+        }
+
+        .profile-modal .detail-item i {
+            margin-right: 6px;
+            color: var(--primary);
+        }
+        
+        .profile-modal .bio {
+            font-size: 1rem;
+            line-height: 1.6;
+            margin-bottom: 20px;
+            color: #495057;
+            max-height: 100px;
+            overflow-y: auto;
+        }
+        
+        .profile-modal .joined-date {
+            font-size: 0.9rem;
+            color: #6c757d;
+        }
+        
+        .profile-modal-close-btn {
+            position: absolute;
+            top: 15px;
+            right: 15px;
+            background: none;
+            border: none;
+            font-size: 1.5rem;
+            color: #6c757d;
+            cursor: pointer;
+            transition: color 0.2s ease;
+        }
+
+        .profile-modal-close-btn:hover {
+            color: var(--dark);
+        }
+
+        .profile-modal .loading, .profile-modal .error {
+            padding: 50px;
+            color: var(--text);
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- 左侧功能面板 -->
+        <div class="panel">
+            <div class="logo">
+                <i class="fas fa-map-marked-alt"></i>
+                <h1>MapConnect</h1>
+            </div>
+
+            <!-- 用户信息区域 -->
+            <div id="user-area" class="user-area animate">
+                <div id="user-avatar" class="user-avatar">Hi</div>
+                <div class="user-info">
+                    <h3 class="user-name" id="user-name">登录 / 注册</h3>
+                    <p class="user-status" id="user-status">点击以加入我们</p>
+                </div>
+                <button id="logout-btn" class="logout-btn" title="退出登录"><i class="fas fa-sign-out-alt"></i></button>
+            </div>
+
+            <!-- 功能卡片 -->
+            <div class="functions">
+                <div class="func-card animate delay-1">
+                    <i class="fas fa-plus-circle"></i>
+                    <h3>添加标注</h3>
+                    <p>在地图上标记位置</p>
+                </div>
+                <div class="func-card animate delay-2">
+                    <i class="fas fa-user-friends"></i>
+                    <h3>我的搭子</h3>
+                    <p>查看联系人列表</p>
+                    <div class="notification-badge">3</div>
+                </div>
+                <div class="func-card animate delay-3">
+                    <i class="fas fa-cog"></i>
+                    <h3>个人设置</h3>
+                    <p>管理账户信息</p>
+                </div>
+                <div class="func-card animate delay-4">
+                    <i class="fas fa-list-alt"></i>
+                    <h3>我的标注</h3>
+                    <p>管理您发布的活动</p>
+                </div>
+            </div>
+
+            <!-- 搜索区域 -->
+            <div class="search-container" onclick="window.location.href='marker-search.html'">
+                <i class="fas fa-search"></i>
+                <input type="text" placeholder="搜索地点、活动或用户...">
+            </div>
+
+            <!-- 标注列表 -->
+            <div class="markers-container">
+                <h2><i class="fas fa-map-pin"></i> 附近标注</h2>
+                <!-- Marker cards will be dynamically inserted here -->
+            </div>
+        </div>
+
+        <!-- 右侧地图区域 -->
+        <div class="map-container">
+            <div id="map"></div>
+            <div class="map-controls">
+                <button id="locate-btn" class="map-control-btn" title="我的位置">
+                    <i class="fas fa-crosshairs"></i>
+                </button>
+                <button id="add-marker-btn" class="map-control-btn" title="添加标注">
+                    <i class="fas fa-plus"></i>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- User Profile Modal -->
+    <div id="profile-modal-overlay" class="profile-modal-overlay"></div>
+    <div id="profile-modal" class="profile-modal">
+        <!-- Content will be injected by JavaScript -->
+    </div>
+
+    <script src="js/api-service.js?v=1.8"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            // 检查 apiService 是否已定义
+            if (typeof apiService === 'undefined') {
+                console.error('apiService is not loaded. Make sure api-service.js is included before this script.');
+                alert('核心服务加载失败，请刷新页面重试。');
+                return;
+            }
+
+            // --- 全局变量 ---
+            let map = null;
+            let currentUser = null;
+            let markersOnMap = {}; // 存储 marker 实例, key 是 marker ID
+            let userLocationMarker = null; // 用户位置标记
+            let markers = []; // To store marker data
+
+            // --- 初始化函数 ---
+            function init() {
+                updateUserLoginState();
+                
+                // 加载高德地图 API
+                loadAMapAPI().then(AMap => {
+                    initMap(AMap);
+                }).catch(e => {
+                    console.error('地图加载失败', e);
+                });
+            }
+
+            function initMap(AMap) {
+                // 初始化地图
+                map = new AMap.Map('map', {
+                    zoom: 13,
+                    center: [121.4737, 31.2304], // Shanghai
+                    resizeEnable: true
+                });
+
+                // 启动地图状态监控
+                if (window.watchMapStatus) {
+                    window.watchMapStatus('map');
+                }
+
+                // 添加控件
+                AMap.plugin(['AMap.ToolBar', 'AMap.Scale'], function(){
+                    map.addControl(new AMap.ToolBar());
+                    map.addControl(new AMap.Scale());
+                });
+
+                // 加载所有标注
+                loadPublicMarkers();
+                
+                setupEventListeners(AMap);
+                
+                // 尝试定位用户
+                locateUser(AMap);
+            }
+
+            // --- UI 更新函数 ---
+            function updateUserLoginState() {
+                const userArea = document.getElementById('user-area');
+                const userNameEl = document.getElementById('user-name');
+                const userStatusEl = document.getElementById('user-status');
+                const userAvatarEl = document.getElementById('user-avatar');
+
+                const userData = sessionStorage.getItem('mapconnect_currentUser');
+
+                if (userData) {
+                    currentUser = JSON.parse(userData);
+                    const user = currentUser.user || currentUser;
+
+                    userNameEl.textContent = user.name || user.username;
+                    userStatusEl.textContent = '欢迎回来！';
+
+                    if (user.avatar_url) {
+                        let avatarUrl = user.avatar_url;
+                        if (!avatarUrl.startsWith('http')) {
+                            avatarUrl = `${apiService.config.BASE_URL}${avatarUrl}`;
+                        }
+                        userAvatarEl.style.backgroundImage = `url(${avatarUrl})`;
+                        userAvatarEl.textContent = '';
+                    } else {
+                        userAvatarEl.style.backgroundImage = 'none';
+                        userAvatarEl.textContent = (user.name || user.username).charAt(0).toUpperCase();
+                    }
+
+                    // 添加退出登录链接
+                    const logoutLink = document.createElement('a');
+                    logoutLink.href = '#';
+                    logoutLink.textContent = '退出登录';
+                    logoutLink.style.color = 'var(--danger, #f72585)';
+                    logoutLink.style.fontWeight = 'bold';
+                    logoutLink.style.fontSize = '0.85rem';
+                    logoutLink.style.marginLeft = '10px';
+                    logoutLink.style.textDecoration = 'none';
+                    logoutLink.onclick = (e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        if (confirm('您确定要退出登录吗？')) {
+                            sessionStorage.removeItem('mapconnect_currentUser');
+                            window.location.reload();
+                        }
+                    };
+                    userStatusEl.appendChild(logoutLink);
+                    
+                    userArea.onclick = () => {
+                        window.location.href = 'user-system.html#profile';
+                    };
+                } else {
+                    currentUser = null;
+                    userNameEl.textContent = '登录 / 注册';
+                    userStatusEl.textContent = '点击以加入我们';
+                    userAvatarEl.style.backgroundImage = 'none';
+                    userAvatarEl.textContent = 'Hi';
+                    userArea.onclick = () => window.location.href = 'user-system.html';
+                }
+            }
+
+            // --- 数据加载函数 ---
+            async function loadPublicMarkers() {
+                // 加载新标记前清除现有标记
+                if (map) {
+                     for (const markerId in markersOnMap) {
+                        markersOnMap[markerId].setMap(null);
+                    }
+                }
+                markersOnMap = {};
+                markers = [];
+
+                const markersContainer = document.querySelector('.markers-container');
+                markersContainer.querySelectorAll('.marker-card, .markers-message').forEach(el => el.remove());
+
+                try {
+                    const markersData = await apiService.getPublicMarkers();
+                    if (markersData && Array.isArray(markersData) && markersData.length > 0) {
+                        markersData.forEach(marker => {
+                            addMarkerToMap(marker);
+                            addMarkerToList(marker);
+                            markers.push(marker);
+                        });
+                    } else {
+                        const messageEl = document.createElement('p');
+                        messageEl.className = 'markers-message';
+                        messageEl.style.textAlign = 'center';
+                        messageEl.style.padding = '20px';
+                        messageEl.textContent = '附近还没有标注，快来添加第一个吧！';
+                        markersContainer.appendChild(messageEl);
+                    }
+                } catch (error) {
+                    console.error('加载公开标注失败:', error);
+                    const messageEl = document.createElement('p');
+                    messageEl.className = 'markers-message';
+                    messageEl.textContent = '加载标注失败，请稍后重试。';
+                    markersContainer.appendChild(messageEl);
+                }
+            }
+
+            // --- 标注列表UI ---
+            function addMarkerToList(markerData) {
+                const markersContainer = document.querySelector('.markers-container');
+                if (!markersContainer) return;
+
+                const card = document.createElement('div');
+                card.className = 'marker-card animate';
+                card.dataset.markerId = markerData.id;
+
+                const displayName = markerData.user_name || markerData.user_username || '未知用户';
+                const userInitial = displayName.charAt(0).toUpperCase();
+                const shortDescription = markerData.description.length > 40 
+                    ? markerData.description.substring(0, 40) + '...' 
+                    : markerData.description;
+
+                card.innerHTML = `
+                    <h3><i class="fas fa-map-marker-alt"></i> ${markerData.title}</h3>
+                    <p>${shortDescription}</p>
+                    <div class="marker-footer">
+                        <div class="marker-user">
+                            <span>${userInitial}</span>
+                            <small>${displayName}</small>
+                        </div>
+                        <button class="contact-btn">联系 TA</button>
+                    </div>
+                `;
+
+                card.addEventListener('click', (e) => {
+                    if (e.target.classList.contains('contact-btn')) return;
+                    const markerOnMap = markersOnMap[markerData.id];
+                    if (markerOnMap && map) {
+                        map.setZoomAndCenter(16, markerOnMap.getPosition());
+                        // Trigger click to show info window
+                        markerOnMap.emit('click', { target: markerOnMap });
+                    }
+                });
+                
+                const contactBtn = card.querySelector('.contact-btn');
+                contactBtn.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    alert(`联系用户功能正在开发中！`);
+                });
+
+                markersContainer.appendChild(card);
+            }
+
+            // --- 个人资料弹窗 ---
+            async function showUserProfile(username) {
+                const modal = document.getElementById('profile-modal');
+                const overlay = document.getElementById('profile-modal-overlay');
+                modal.innerHTML = '<div class="loading">正在加载用户资料...</div>';
+                modal.classList.add('active');
+                overlay.classList.add('active');
+
+                try {
+                    const profile = await apiService.getUserProfile(username);
+                    const joinDate = new Date(profile.created_at).toLocaleDateString();
+
+                    modal.innerHTML = `
+                        <button class="profile-modal-close-btn">&times;</button>
+                        <div class="profile-modal-content">
+                            <div class="avatar" style="background-image: url(${profile.avatar_url ? (profile.avatar_url.startsWith('http') ? profile.avatar_url : apiService.config.BASE_URL + profile.avatar_url) : ''})">${profile.avatar_url ? '' : (profile.name || profile.username).charAt(0).toUpperCase()}</div>
+                            <h2 class="name">${profile.name || profile.username}</h2>
+                            <div class="user-details">
+                                ${profile.gender && profile.gender !== 'secret' ? `<div class="detail-item"><i class="fas fa-venus-mars"></i> ${profile.gender === 'male' ? '男' : '女'}</div>` : ''}
+                                ${profile.age ? `<div class="detail-item"><i class="fas fa-birthday-cake"></i> ${profile.age} 岁</div>` : ''}
+                            </div>
+                            <p class="bio">${profile.bio || '这位用户很神秘，什么也没留下...'}</p>
+                            <p class="joined-date">于 ${joinDate} 加入</p>
+                        </div>
+                    `;
+
+                    modal.querySelector('.profile-modal-close-btn').onclick = () => {
+                        modal.classList.remove('active');
+                        overlay.classList.remove('active');
+                    };
+
+                } catch (error) {
+                    console.error('加载用户资料失败:', error);
+                    modal.innerHTML = '<div class="error">无法加载用户资料。请稍后重试。</div>';
+                }
+            }
+
+            // --- 地图交互 ---
+            function addMarkerToMap(markerData) {
+                if (!markerData || !markerData.id || !markerData.lat || !markerData.lng || !map) return;
+                
+                // Remove existing if any
+                if (markersOnMap[markerData.id]) {
+                    markersOnMap[markerData.id].setMap(null);
+                }
+
+                const markerType = markerData.marker_type || 'default';
+                const iconClass = getIconForType(markerType);
+
+                // 自定义 Marker 内容
+                const content = `<div class="marker-icon ${markerType}" style="
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    width: 40px;
+                    height: 40px;
+                    border-radius: 50%;
+                    background: white;
+                    box-shadow: 0 3px 10px rgba(0, 0, 0, 0.3);
+                    font-size: 1.5rem;
+                    border: 3px solid #4361ee;
+                "><i class="fas ${iconClass}"></i></div>`;
+
+                const marker = new AMap.Marker({
+                    position: [markerData.lng, markerData.lat],
+                    content: content,
+                    offset: new AMap.Pixel(-20, -20),
+                    extData: markerData
+                });
+                
+                marker.on('click', () => {
+                    const infoWindow = new AMap.InfoWindow({
+                        content: createPopupContent(markerData),
+                        offset: new AMap.Pixel(0, -40)
+                    });
+                    infoWindow.open(map, marker.getPosition());
+                });
+
+                marker.setMap(map);
+                markersOnMap[markerData.id] = marker;
+            }
+            
+            function createPopupContent(markerData) {
+                const displayName = markerData.user_name || markerData.user_username || '未知用户';
+                return `
+                    <div class="popup-content">
+                        <h4>${markerData.title}</h4>
+                        <p>${markerData.description}</p>
+                        <div class="popup-footer">
+                            <span>由 <strong class="user-profile-link" data-username="${markerData.user_username}" style="cursor:pointer; color:var(--primary); text-decoration:underline" onclick="showUserProfile('${markerData.user_username}')">${displayName}</strong> 发布</span>
+                            <button class="popup-contact-btn" onclick="alert('联系方式: ${markerData.contact || '未提供'}')">查看联系方式</button>
+                        </div>
+                    </div>
+                `;
+            }
+            
+            function getIconForType(type) {
+                const icons = {
+                    'personal': 'fa-map-marker-alt', // 个人
+                    'activity': 'fa-calendar-check', // 活动
+                    'business': 'fa-briefcase',      // 商家 (修正为 fa-briefcase，与 marker-search.html 保持一致，或用 fa-store)
+                    'official': 'fa-landmark',       // 官方 (补充)
+                    'charity': 'fa-hand-holding-heart', // 公益 (补充)
+                    'food': 'fa-utensils',           // 美食
+                    'scenery': 'fa-tree',            // 风景
+                    'default': 'fa-map-marker-alt'   // 默认图标 (修正为普通地标，避免显示问号)
+                };
+                return icons[type] || icons['default'];
+            }
+
+            // --- 定位功能 ---
+            function locateUser(AMap) {
+                const locateBtn = document.getElementById('locate-btn');
+                locateBtn.classList.add('loading');
+                locateBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
+
+                AMap.plugin('AMap.Geolocation', function() {
+                    var geolocation = new AMap.Geolocation({
+                        enableHighAccuracy: true,
+                        timeout: 10000,
+                        zoomToAccuracy: true,
+                    });
+
+                    geolocation.getCurrentPosition(function(status, result) {
+                        locateBtn.classList.remove('loading');
+                        locateBtn.innerHTML = '<i class="fas fa-crosshairs"></i>';
+
+                        if (status == 'complete') {
+                            // 成功获取位置，自动跳转到该位置
+                            map.setZoomAndCenter(16, result.position);
+
+                            if (userLocationMarker) {
+                                userLocationMarker.setPosition(result.position);
+                            } else {
+                                userLocationMarker = new AMap.Marker({
+                                    position: result.position,
+                                    content: '<div class="user-location-marker" style="background-color:#4361ee;width:15px;height:15px;border-radius:50%;border:2px solid white;box-shadow:0 0 5px rgba(0,0,0,0.5);"></div>',
+                                    offset: new AMap.Pixel(-7.5, -7.5)
+                                });
+                                userLocationMarker.setMap(map);
+                            }
+                        } else {
+                            console.warn('定位失败', result);
+                            let errorMsg = '无法获取您的位置';
+                            if (result.message) errorMsg += `: ${result.message}`;
+                            alert(errorMsg);
+                        }
+                    });
+                });
+            }
+
+            // --- 事件监听 ---
+            function setupEventListeners(AMap) {
+                document.querySelector('.functions .func-card:nth-child(1)').addEventListener('click', handleAddMarkerClick);
+                
+                document.querySelector('.functions .func-card:nth-child(2)').addEventListener('click', () => {
+                     if (!currentUser) {
+                        alert('请先登录！');
+                        window.location.href = 'user-system.html';
+                        return;
+                    }
+                    window.location.href = 'messages.html';
+                });
+                
+                document.querySelector('.functions .func-card:nth-child(4)').addEventListener('click', () => {
+                     if (!currentUser) {
+                        alert('请先登录！');
+                        window.location.href = 'user-system.html';
+                        return;
+                    }
+                    window.location.href = 'my-markers.html';
+                });
+                
+                document.querySelector('.functions .func-card:nth-child(3)').addEventListener('click', () => {
+                     if (currentUser) {
+                        window.location.href = 'user-system.html#profile';
+                    } else {
+                        window.location.href = 'user-system.html';
+                    }
+                });
+
+                const locateBtn = document.getElementById('locate-btn');
+                locateBtn.addEventListener('click', () => {
+                    locateUser(AMap);
+                });
+                
+                document.getElementById('add-marker-btn').addEventListener('click', handleAddMarkerClick);
+
+                const profileOverlay = document.getElementById('profile-modal-overlay');
+                profileOverlay.onclick = () => {
+                    document.getElementById('profile-modal').classList.remove('active');
+                    profileOverlay.classList.remove('active');
+                };
+            }
+            
+            function handleAddMarkerClick() {
+                if (!currentUser) {
+                    alert('请先登录再添加标注！');
+                    window.location.href = 'user-system.html';
+                    return;
+                }
+                window.location.href = 'marker-editor.html';
+            }
+            
+            // 全局函数暴露
+            window.showUserProfile = showUserProfile;
+
+            // --- 初始化 ---
+            init();
+        });
+    </script>
+</body>
+</html>
